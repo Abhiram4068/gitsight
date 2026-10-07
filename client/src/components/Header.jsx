@@ -45,13 +45,15 @@ export default function Header({ user, onLogout }) {
       </div>
 
       <div className="flex items-center space-x-4 text-gray-600">
-        <button className="hover:text-gray-900 text-sm flex items-center space-x-1 cursor-pointer">
-          <i className="fa-solid fa-magnifying-glass text-xs"></i> <span>Search Repos</span>
-        </button>
 
         {/* User Entity Info */}
         <div className="flex items-center space-x-2 pl-2 border-l border-gray-200">
-          {currentUser.avatarUrl ? (
+          <button
+          onClick={() => setIsDropdownOpen((prev) => !prev)}
+          title="Account Menu"
+          className='hover:cursor-pointer'
+          >
+        {currentUser.avatarUrl ? (
             <img
               src={currentUser.avatarUrl}
               alt={currentUser.username}
@@ -62,26 +64,21 @@ export default function Header({ user, onLogout }) {
               {currentUser.username ? currentUser.username.charAt(0).toUpperCase() : 'U'}
             </div>
           )}
+          </button>
+       
 
           <div className="flex flex-col text-left leading-none">
             <span className="text-xs font-semibold text-gray-800">
               {currentUser.username}
             </span>
-            <span className="text-[10px] text-gray-500 uppercase tracking-wider font-medium">
-              {currentUser.role}
+            <span className="text-[10px] text-gray-500  tracking-wider font-medium">
+              {currentUser.email}
             </span>
           </div>
         </div>
 
         {/* User Initials Trigger with Dropdown */}
         <div className="relative" ref={dropdownRef}>
-          <button
-            onClick={() => setIsDropdownOpen((prev) => !prev)}
-            title="Account Menu"
-            className="w-8 h-8 rounded-full bg-gray-900 text-white flex items-center justify-center font-bold text-xs border hover:opacity-90 transition-opacity cursor-pointer focus:outline-none"
-          >
-            {currentUser.username ? currentUser.username.charAt(0).toUpperCase() + " " + currentUser.username.charAt(1).toUpperCase() : 'GH'}
-          </button>
 
           {/* Dropdown Menu */}
           {isDropdownOpen && (

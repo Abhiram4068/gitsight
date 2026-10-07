@@ -48,6 +48,57 @@ public class GitHubService : IGitHubService
         }).ToList();
     }
 
+    public async Task<List<PullRequestDto>> GetPullRequestsAsync(string accessToken, string owner, string repo, string? state = "all")
+    {
+        var client = CreateClient(accessToken);
+
+        var stateFilter = ItemStateFilter.All;
+        if (string.Equals(state, "open", StringComparison.OrdinalIgnoreCase))
+        {
+            stateFilter = ItemStateFilter.Open;
+        }
+        else if (string.Equals(state, "closed", StringComparison.OrdinalIgnoreCase) || string.Equals(state, "merged", StringComparison.OrdinalIgnoreCase))
+        {
+            stateFilter = ItemStateFilter.Closed;
+        }
+
+        var prRequest = new PullRequestRequest
+        {
+            State = stateFilter,
+            SortProperty = PullRequestSort.Updated,
+            SortDirection = SortDirection.Descending
+        };
+
+        var pullRequests = await client.PullRequest.GetAllForRepository(owner, repo, prRequest);
+
+        return pullRequests.Select(pr => new PullRequestDto
+        {
+            PrNumber = pr.Number,
+            Title = pr.Title ?? string.Empty,
+            Description = pr.Body,
+            State = (pr.Merged || pr.MergedAt.HasValue) ? "merged" : (pr.State.Value == ItemState.Open ? "open" : "closed"),
+            IsMerged = pr.Merged || pr.MergedAt.HasValue,
+            IsDraft = pr.Draft,
+            Author = pr.User?.Login ?? "unknown",
+            AuthorAvatarUrl = pr.User?.AvatarUrl,
+            HeadBranch = pr.Head?.Ref ?? string.Empty,
+            BaseBranch = pr.Base?.Ref ?? string.Empty,
+            HeadSha = pr.Head?.Sha ?? string.Empty,
+            RepositoryFullName = $"{owner}/{repo}",
+            HtmlUrl = pr.HtmlUrl ?? $"https://github.com/{owner}/{repo}/pull/{pr.Number}",
+            Additions = pr.Additions,
+            Deletions = pr.Deletions,
+            ChangedFiles = pr.ChangedFiles,
+            CommitsCount = pr.Commits,
+            CommentsCount = pr.Comments,
+            Labels = pr.Labels != null ? pr.Labels.Select(l => l.Name).ToList() : new List<string>(),
+            CreatedAt = pr.CreatedAt.UtcDateTime,
+            UpdatedAt = pr.UpdatedAt.UtcDateTime,
+            ClosedAt = pr.ClosedAt?.UtcDateTime,
+            MergedAt = pr.MergedAt?.UtcDateTime
+        }).ToList();
+    }
+
     public async Task<string> GetPullRequestDiffAsync(string accessToken, string owner, string repo, int prNumber)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{owner}/{repo}/pulls/{prNumber}");

@@ -196,7 +196,7 @@ export default function Repositories() {
                 paginatedRepos.map((repo) => (
                   <tr key={repo.id} className="hover:bg-gray-50/70 transition-colors">
                     <td className="py-2 px-3 font-medium text-blue-600 hover:underline cursor-pointer">
-                      <Link to="/pull-requests">{repo.name}</Link>
+                      <Link to={`/pull-requests?repo=${encodeURIComponent(repo.name)}`}>{repo.name}</Link>
                     </td>
                     <td className="py-2 px-3 text-gray-600">{repo.role}</td>
                     <td className="py-2 px-3">
@@ -211,7 +211,7 @@ export default function Repositories() {
                     </td>
                     <td className="py-2 px-3 text-center">
                       <Link
-                        to="/pull-requests"
+                        to={`/pull-requests?repo=${encodeURIComponent(repo.name)}`}
                         className="inline-block px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors shadow-sm"
                       >
                         View  &rarr;

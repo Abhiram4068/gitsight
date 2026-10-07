@@ -1,6 +1,21 @@
 import axiosClient from './axiosClient';
 
 export const pullRequestsApi = {
+  getPullRequests: async ({ owner, repo, repoFullName, repositoryId, state = 'all', search, pageNumber = 1, pageSize = 10 } = {}) => {
+    const params = {};
+    if (owner) params.owner = owner;
+    if (repo) params.repo = repo;
+    if (repoFullName) params.repoFullName = repoFullName;
+    if (repositoryId) params.repositoryId = repositoryId;
+    if (state) params.state = state;
+    if (search) params.search = search;
+    if (pageNumber) params.pageNumber = pageNumber;
+    if (pageSize) params.pageSize = pageSize;
+
+    const response = await axiosClient.get('/api/pullrequests', { params });
+    return response.data?.data;
+  },
+
   getPrDiff: async (pullRequestId) => {
     const response = await axiosClient.get(`/api/pullrequests/${pullRequestId}/diff`);
     return response.data?.data;

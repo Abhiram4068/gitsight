@@ -1,6 +1,7 @@
 using FluentValidation;
 using GitSight.Application.Common.Interfaces;
 using GitSight.Application.Common.Models;
+using GitSight.Application.Common.DTOs;
 using GitSight.Application.DTOs;
 using GitSight.Domain.Entities;
 using GitSight.Domain.Enums;
@@ -33,6 +34,142 @@ public class PullRequestsController : ControllerBase
         _geminiService = geminiService;
         _currentUserService = currentUserService;
         _mergeValidator = mergeValidator;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<PaginatedResponseDto<PullRequestDto>>>> GetPullRequests(
+        [FromQuery] string? owner = null,
+        [FromQuery] string? repo = null,
+        [FromQuery] string? repoFullName = null,
+        [FromQuery] Guid? repositoryId = null,
+        [FromQuery] string state = "all", // "all", "open", "closed"
+        [FromQuery] string? search = null,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10)
+    {
+        string targetOwner = owner ?? string.Empty;
+        string targetRepo = repo ?? string.Empty;
+
+        if (repositoryId.HasValue && (string.IsNullOrEmpty(targetOwner) || string.IsNullOrEmpty(targetRepo)))
+        {
+            var dbRepo = await _context.Repositories.FirstOrDefaultAsync(r => r.Id == repositoryId.Value);
+            if (dbRepo is not null)
+            {
+                targetOwner = dbRepo.Owner;
+                targetRepo = dbRepo.Name;
+            }
+        }
+
+        if (!string.IsNullOrEmpty(repoFullName) && (string.IsNullOrEmpty(targetOwner) || string.IsNullOrEmpty(targetRepo)))
+        {
+            var parts = repoFullName.Split('/');
+            if (parts.Length == 2)
+            {
+                targetOwner = parts[0];
+                targetRepo = parts[1];
+            }
+        }
+
+        var token = _currentUserService.GitHubAccessToken;
+        List<PullRequestDto> pullRequests = new();
+
+        // If targetOwner and targetRepo are still empty, try resolving from user's repositories
+        if (string.IsNullOrEmpty(targetOwner) || string.IsNullOrEmpty(targetRepo))
+        {
+            if (!string.IsNullOrEmpty(token))
+            {
+                var userRepos = await _gitHubService.GetUserRepositoriesAsync(token);
+                if (userRepos.Count > 0)
+                {
+                    targetOwner = userRepos[0].Owner;
+                    targetRepo = userRepos[0].Name;
+                }
+            }
+        }
+
+        if (!string.IsNullOrEmpty(token) && !string.IsNullOrEmpty(targetOwner) && !string.IsNullOrEmpty(targetRepo))
+        {
+            try
+            {
+                pullRequests = await _gitHubService.GetPullRequestsAsync(token, targetOwner, targetRepo, state);
+            }
+            catch (Exception ex)
+            {
+                // Fall back to local DB if GitHub API fails
+                pullRequests = new List<PullRequestDto>();
+            }
+        }
+
+        // Fetch local DB pull requests for enrichment
+        var fullRepoName = $"{targetOwner}/{targetRepo}";
+        var localPrs = await _context.PullRequests
+            .Include(p => p.Comments)
+            .Where(p => p.Repository.FullName == fullRepoName || (p.Repository.Owner == targetOwner && p.Repository.Name == targetRepo))
+            .ToListAsync();
+
+        // Enrich GitHub PRs with local AI review data
+        foreach (var pr in pullRequests)
+        {
+            var localPr = localPrs.FirstOrDefault(l => l.PrNumber == pr.PrNumber);
+            if (localPr is not null)
+            {
+                pr.Id = localPr.Id;
+                pr.AiSummary = localPr.AiSummary;
+                pr.RiskLevel = localPr.RiskLevel;
+                pr.AnalysisStatus = !string.IsNullOrEmpty(localPr.AiSummary) ? "completed" : "analyzing";
+                pr.AiCommentsCount = localPr.Comments.Count(c => c.IsAiGenerated);
+            }
+        }
+
+        // If GitHub returned empty (or rate limit / offline), fallback to local PRs
+        if (pullRequests.Count == 0 && localPrs.Count > 0)
+        {
+            pullRequests = localPrs.Select(lp => new PullRequestDto
+            {
+                Id = lp.Id,
+                PrNumber = lp.PrNumber,
+                Title = lp.Title,
+                Description = lp.Description,
+                State = lp.State.ToString().ToLower(),
+                IsMerged = lp.State == PrState.Merged,
+                Author = "contributor",
+                HeadBranch = lp.HeadBranch,
+                BaseBranch = lp.BaseBranch,
+                HeadSha = lp.HeadSha,
+                RepositoryFullName = fullRepoName,
+                HtmlUrl = $"https://github.com/{fullRepoName}/pull/{lp.PrNumber}",
+                AiSummary = lp.AiSummary,
+                RiskLevel = lp.RiskLevel,
+                AnalysisStatus = !string.IsNullOrEmpty(lp.AiSummary) ? "completed" : "pending",
+                AiCommentsCount = lp.Comments.Count(c => c.IsAiGenerated),
+                CreatedAt = lp.CreatedAt,
+                UpdatedAt = lp.UpdatedAt
+            }).ToList();
+        }
+
+        var query = pullRequests.AsQueryable();
+
+        // Filter by state if specified ("open", "closed", "all")
+        if (!string.IsNullOrEmpty(state) && !string.Equals(state, "all", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(p => string.Equals(p.State, state, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Filter by search query
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(p =>
+                p.Title.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                p.Author.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                p.HeadBranch.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                p.PrNumber.ToString().Contains(search));
+        }
+
+        var totalCount = query.Count();
+        var items = query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+
+        var paginatedResult = new PaginatedResponseDto<PullRequestDto>(items, totalCount, pageNumber, pageSize);
+        return Ok(ApiResponse<PaginatedResponseDto<PullRequestDto>>.SuccessResponse(paginatedResult, "Pull requests fetched successfully."));
     }
 
     [HttpGet("{id:guid}/diff")]
