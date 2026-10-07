@@ -45,9 +45,9 @@ export default function Login() {
 
   return (
     <div className="bg-gray-50 text-gray-900 min-h-screen flex items-center justify-center p-4 font-sans">
-      <div className="bg-white p-8 rounded-xl border border-gray-200 shadow-md max-w-sm w-full text-center space-y-6">
-        <div className="inline-flex items-center justify-center text-black font-bold text-2xl tracking-tight">
-          GitSight
+      <div className="bg-white p-8 rounded-lg border border-gray-200 shadow-sm max-w-sm w-full text-center space-y-6">
+        <div className="inline-flex items-center justify-center text-black font-semibold text-2xl tracking-tight">
+          GitSight Login
         </div>
 
         <div>
@@ -84,21 +84,6 @@ export default function Login() {
             <span>Sign in with GitHub SSO</span>
           </button>
         )}
-
-        <div className="border-t border-gray-100 pt-4 space-y-2 text-xs text-left text-gray-500">
-          <div className="flex items-center space-x-2">
-            <span className="text-green-600 font-bold">✓</span>
-            <span>Import owned & collaborator repos</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-green-600 font-bold">✓</span>
-            <span>Automated AI diff review & inline suggestions</span>
-          </div>
-          <div className="flex items-center space-x-2">
-            <span className="text-green-600 font-bold">✓</span>
-            <span>Post comments & merge pull requests</span>
-          </div>
-        </div>
       </div>
     </div>
   );
