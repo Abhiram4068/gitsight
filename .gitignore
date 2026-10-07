@@ -39,17 +39,28 @@ tmp/
 temp/
 *.tmp
 
-# IDEs & Code Editors
+# .NET Build Outputs
+[Bb]in/
+[Oo]bj/
+**/[Bb]in/
+**/[Oo]bj/
+
+# IDEs & Code Editors (Visual Studio & VS Code)
+.vs/
+**/.vs/
+*.vsidx
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
 .idea/
-*.suo
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
 *.swo
 
