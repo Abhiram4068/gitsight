@@ -4,6 +4,7 @@ import MainLayout from '../layouts/MainLayout';
 
 // Lazy-loaded pages
 const Dashboard = lazy(() => import('../pages/dashboard'));
+const Repositories = lazy(() => import('../pages/repositories'));
 const Login = lazy(() => import('../pages/login'));
 const PullRequests = lazy(() => import('../pages/pull-requests'));
 const PrDetail = lazy(() => import('../pages/pr-detail'));
@@ -23,6 +24,7 @@ export default function AppRoutes() {
         <Route element={<MainLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/repositories" element={<Repositories />} />
           <Route path="/pull-requests" element={<PullRequests />} />
         </Route>
 

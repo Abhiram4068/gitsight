@@ -20,7 +20,19 @@ export default function Sidebar() {
             }`
           }
         >
-          <span>📦</span> <span>Import Repositories</span>
+          <i className="fa-solid fa-gauge-high text-gray-500"></i> <span>Dashboard</span>
+        </NavLink>
+        <NavLink
+          to="/repositories"
+          className={({ isActive }) =>
+            `flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive
+                ? 'text-blue-600 bg-blue-50 font-semibold'
+                : 'text-gray-700 hover:bg-gray-200'
+            }`
+          }
+        >
+          <i className="fa-solid fa-box-archive text-gray-500"></i> <span>Repositories</span>
         </NavLink>
         <NavLink
           to="/pull-requests"
@@ -32,7 +44,7 @@ export default function Sidebar() {
             }`
           }
         >
-          <span>🔀</span> <span>Pull Requests</span>
+          <i className="fa-solid fa-code-pull-request text-gray-500"></i> <span>Pull Requests</span>
         </NavLink>
       </nav>
 
@@ -51,10 +63,10 @@ export default function Sidebar() {
       )}
 
       {/* Active PR Webhook Queue */}
-      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
+      {/* <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
         <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex justify-between items-center text-xs font-bold text-gray-600 uppercase tracking-wider">
           <span>Incoming Webhooks</span>
-          <span>⚡ Live</span>
+          <span className="flex items-center gap-1"><i className="fa-solid fa-bolt "></i> Live</span>
         </div>
         <div className="p-3 text-xs text-gray-500 bg-white space-y-2">
           <div className="flex justify-between items-center">
@@ -70,7 +82,7 @@ export default function Sidebar() {
             </span>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Agent Status */}
       <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
