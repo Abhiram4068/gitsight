@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="GitSight.Api/GitSight.Api.csproj" />
+  <Project Path="GitSight.Application/GitSight.Application.csproj" />
+  <Project Path="GitSight.Domain/GitSight.Domain.csproj" />
+  <Project Path="GitSight.Infrastructure/GitSight.Infrastructure.csproj" />
+</Solution>
