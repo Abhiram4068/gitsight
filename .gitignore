@@ -50,6 +50,9 @@ temp/
 *.ntvs*
 *.njsproj
 *.sln
+.vs/
+[Bb]in/
+[Oo]bj/
 *.sw?
 *.swo
 
