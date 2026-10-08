@@ -27,8 +27,8 @@ public class GitHubService : IGitHubService
     public async Task<List<RepositoryDto>> GetUserRepositoriesAsync(string accessToken)
     {
         var client = CreateClient(accessToken);
-        
-        // Fetch repositories: user owned + collaborator
+
+        // It fetches all repositories where the authorized user is an Owner, Collaborator, or Organization Member.
         var repos = await client.Repository.GetAllForCurrent(new RepositoryRequest
         {
             Affiliation = RepositoryAffiliation.Owner | RepositoryAffiliation.Collaborator | RepositoryAffiliation.OrganizationMember,
@@ -69,6 +69,7 @@ public class GitHubService : IGitHubService
             SortDirection = SortDirection.Descending
         };
 
+        // Fetched the pull requests for that owner and reopository
         var pullRequests = await client.PullRequest.GetAllForRepository(owner, repo, prRequest);
 
         return pullRequests.Select(pr => new PullRequestDto
