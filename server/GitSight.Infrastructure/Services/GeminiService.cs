@@ -71,7 +71,7 @@ public class GeminiService : IAiReviewService
         var masterResult = new GeminiReviewResultDto
         {
             // Initialize the issues list to prevent null reference errors.
-            Issues = new List<AiReviewIssueDto>()
+            Issues = new List<GeminiInlineCommentDto>()
         };
         // Use a string builder to aggregate the executive summaries efficiently.
         var summaries = new StringBuilder();

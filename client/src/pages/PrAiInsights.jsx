@@ -238,32 +238,40 @@ export default function PrAiInsights() {
                 </div>
 
                 {/* Code Snippet Block */}
-                {thread.codeLines && (
-                  <div className="bg-gray-50 border-b border-gray-200 font-mono text-xs overflow-x-auto">
-                    {thread.codeLines.map((line, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center px-3 py-1 bg-emerald-50/50 text-emerald-900"
-                      >
-                        <span className="w-8 text-right pr-3 text-gray-400 select-none text-[11px]">
-                          {line.num}
-                        </span>
-                        <span className="text-emerald-600 font-semibold select-none mr-2">
-                          +
-                        </span>
-                        <pre className="whitespace-pre">{line.text}</pre>
+                {(() => {
+                  const computedCodeLines = thread.codeLines || (thread.suggestedRemovedCode ? thread.suggestedRemovedCode.split('\n').map((text, i) => ({ num: thread.startLine + i, text })) : null);
+                  return computedCodeLines && (
+                    <div className="border-b border-gray-200">
+                      <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 text-[11px] text-gray-600 font-semibold flex justify-between items-center">
+                        <span className=" tracking-wider">Current Code</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div className="bg-gray-50 font-mono text-xs overflow-x-auto">
+                        {computedCodeLines.map((line, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center px-3 py-1 bg-emerald-50/50 text-emerald-900"
+                          >
+                            <span className="w-8 text-right pr-3 text-gray-400 select-none text-[11px]">
+                              {line.num}
+                            </span>
+                            <span className="text-emerald-600 font-semibold select-none mr-2">
+                              +
+                            </span>
+                            <pre className="whitespace-pre">{line.text}</pre>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Comment Thread */}
                 <div className="p-4 space-y-3">
                   <div className="flex items-center space-x-2 text-xs">
                     <span className="font-semibold text-gray-900">
-                      {thread.author || "GitSight AI"}
+                      {thread.author || "GitSight"}
                     </span>
-                    <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">
+                    <span className="text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">
                       {thread.issueType}
                     </span>
                     <span
