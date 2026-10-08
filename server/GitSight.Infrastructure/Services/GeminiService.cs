@@ -58,14 +58,18 @@ public class GeminiService : IAiReviewService
             }
         };
 
-        var model = string.IsNullOrEmpty(_settings.Model) ? "gemini-3.8-flash" : _settings.Model;
-        var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_settings.ApiKey}";
-
-        HttpResponseMessage response = null;
-        int maxRetries = 3;
+        var primaryModel = string.IsNullOrEmpty(_settings.Model) ? "gemini-3.1-flash-lite" : _settings.Model;
+        // The list of models to try in order
+        var modelsToTry = new[] { primaryModel, "gemini-3.0-flash-preview" }; 
         
-        for (int i = 0; i < maxRetries; i++)
+        HttpResponseMessage response = null;
+        string currentModel = primaryModel;
+        
+        for (int i = 0; i < modelsToTry.Length; i++)
         {
+            currentModel = modelsToTry[i];
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{currentModel}:generateContent?key={_settings.ApiKey}";
+            
             using var request = new HttpRequestMessage(HttpMethod.Post, url);
             request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
@@ -73,26 +77,14 @@ public class GeminiService : IAiReviewService
             
             if (response.IsSuccessStatusCode)
             {
-                break; // Success! Exit the retry loop.
+                break; // Success! Exit the fallback loop.
             }
             
-            // If it's a 429 (Too Many Requests) or a 500+ (Traffic/Service Unavailable), wait and retry
-            if ((int)response.StatusCode == 429 || (int)response.StatusCode >= 500)
+            // If it failed and we still have models to try, we continue to the next model
+            if (i == modelsToTry.Length - 1)
             {
-                if (i == maxRetries - 1)
-                {
-                    var err = await response.Content.ReadAsStringAsync();
-                    throw new HttpRequestException($"Gemini API overloaded. Failed after {maxRetries} retries: {response.StatusCode} - {err}");
-                }
-                
-                // Exponential backoff: Wait 2s, then 4s, then 8s
-                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, i + 1)));
-            }
-            else
-            {
-                // Unrecoverable error (like 400 Bad Request, 401 Unauthorized)
                 var err = await response.Content.ReadAsStringAsync();
-                throw new HttpRequestException($"Failed to analyze diff with Gemini API: {response.StatusCode} - {err}");
+                throw new HttpRequestException($"Failed to analyze diff with Gemini API. Exhausted all fallback models. Last error ({currentModel}): {response.StatusCode} - {err}");
             }
         }
 
