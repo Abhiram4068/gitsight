@@ -1,6 +1,1 @@
-﻿namespace GitSight.Domain;
-
-public class Class1
-{
-
-}
+// Unused template file

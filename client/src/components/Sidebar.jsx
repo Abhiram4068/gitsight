@@ -15,31 +15,50 @@ export default function Sidebar() {
           className={({ isActive }) =>
             `flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
               isActive
-                ? 'text-blue-600 bg-blue-50 font-semibold'
+                ? 'text-blue-600 font-semibold'
                 : 'text-gray-700 hover:bg-gray-200'
             }`
           }
         >
-          <span>📦</span> <span>Import Repositories</span>
+          <i className="fa-solid fa-table-columns text-gray-500"></i> <span>Dashboard</span>
         </NavLink>
+
+          <hr className="border-gray-300" />
+
+        <NavLink
+          to="/repositories"
+          className={({ isActive }) =>
+            `flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+              isActive
+                ? 'text-blue-600 font-semibold'
+                : 'text-gray-700 hover:bg-gray-200'
+            }`
+          }
+        >
+          <i className="fa-solid fa-box-archive text-gray-500"></i> <span>Repositories</span>
+        </NavLink>
+
+        <hr className="border-gray-300" />
+
         <NavLink
           to="/pull-requests"
           className={({ isActive }) =>
             `flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
               isActive
-                ? 'text-blue-600 bg-blue-50 font-semibold'
+                ? 'text-blue-600 font-semibold'
                 : 'text-gray-700 hover:bg-gray-200'
             }`
           }
         >
-          <span>🔀</span> <span>Pull Requests</span>
+          <i className="fa-solid fa-code-pull-request text-gray-500"></i> <span>Pull Requests</span>
         </NavLink>
+        <hr className="border-gray-300" />
       </nav>
 
-      <hr className="border-gray-200" />
+      
 
       {/* Filter Repository Widget on Pull Requests */}
-      {isPullRequests && (
+      {/* {isPullRequests && (
         <div className="p-3 text-xs bg-white border border-gray-200 rounded-md shadow-sm">
           <div className="font-semibold text-gray-700">Filter Repository</div>
           <select className="w-full mt-2 p-1.5 border border-gray-300 rounded text-xs bg-gray-50 text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-500">
@@ -48,13 +67,13 @@ export default function Sidebar() {
             <option>react-frontend-app</option>
           </select>
         </div>
-      )}
+      )} */}
 
       {/* Active PR Webhook Queue */}
-      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
+      {/* <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
         <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex justify-between items-center text-xs font-bold text-gray-600 uppercase tracking-wider">
           <span>Incoming Webhooks</span>
-          <span>⚡ Live</span>
+          <span className="flex items-center gap-1"><i className="fa-solid fa-bolt "></i> Live</span>
         </div>
         <div className="p-3 text-xs text-gray-500 bg-white space-y-2">
           <div className="flex justify-between items-center">
@@ -70,10 +89,10 @@ export default function Sidebar() {
             </span>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Agent Status */}
-      <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
+      {/* <div className="border border-gray-200 rounded-md overflow-hidden bg-white shadow-sm">
         <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex justify-between items-center text-xs font-bold text-gray-600 uppercase tracking-wider">
           <span>GitSight Engine</span>
           <span className="text-green-600 font-bold">Online</span>
@@ -88,7 +107,7 @@ export default function Sidebar() {
             <span className="text-green-600 font-medium">Ready</span>
           </div>
         </div>
-      </div>
+      </div> */}
     </aside>
   );
 }
