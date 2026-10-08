@@ -4,7 +4,6 @@ using GitSight.Application.Common.DTOs;
 using GitSight.Application.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace GitSight.Api.Controllers;
 
@@ -13,18 +12,15 @@ namespace GitSight.Api.Controllers;
 [Route("api/[controller]")]
 public class RepositoriesController : ControllerBase
 {
-    private readonly IGitHubService _gitHubService;
+    private readonly IRepositoryService _repositoryService;
     private readonly ICurrentUserService _currentUserService;
-    private readonly IApplicationDbContext _context;
 
     public RepositoriesController(
-        IGitHubService gitHubService,
-        ICurrentUserService currentUserService,
-        IApplicationDbContext context)
+        IRepositoryService repositoryService,
+        ICurrentUserService currentUserService)
     {
-        _gitHubService = gitHubService;
+        _repositoryService = repositoryService;
         _currentUserService = currentUserService;
-        _context = context;
     }
 
     [HttpGet]
@@ -39,21 +35,7 @@ public class RepositoriesController : ControllerBase
             return Unauthorized(ApiResponse<object>.FailureResponse("GitHub token missing from user session.", 401));
         }
 
-        // Fetch from GitHub (or local cache)
-        var allRepos = await _gitHubService.GetUserRepositoriesAsync(token);
-
-        var query = allRepos.AsQueryable();
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            query = query.Where(r => r.Name.Contains(search, StringComparison.OrdinalIgnoreCase) 
-                                  || r.FullName.Contains(search, StringComparison.OrdinalIgnoreCase));
-        }
-
-        var totalCount = query.Count();
-        var items = query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
-
-        var paginatedResult = new PaginatedResponseDto<RepositoryDto>(items, totalCount, pageNumber, pageSize);
+        var paginatedResult = await _repositoryService.GetPaginatedRepositoriesAsync(token, search, pageNumber, pageSize);
 
         return Ok(ApiResponse<PaginatedResponseDto<RepositoryDto>>.SuccessResponse(paginatedResult, "Repositories fetched successfully."));
     }

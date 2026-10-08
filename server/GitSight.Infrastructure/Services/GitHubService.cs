@@ -173,4 +173,24 @@ public class GitHubService : IGitHubService
         var result = await client.PullRequest.Merge(owner, repo, prNumber, pullRequestMerge);
         return result.Merged;
     }
+
+    public async Task<int> GetOpenPrCountAsync(string accessToken, string owner, string repo)
+    {
+        try
+        {
+            var client = CreateClient(accessToken);
+            var request = new PullRequestRequest
+            {
+                State = ItemStateFilter.Open
+            };
+            
+            var pullRequests = await client.PullRequest.GetAllForRepository(owner, repo, request);
+            return pullRequests.Count;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching PR count for {owner}/{repo}: {ex.Message}");
+            return 0; // Return 0 gracefully rather than crashing the entire list
+        }
+    }
 }

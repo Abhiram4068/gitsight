@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { pullRequestsApi } from '../api/pullRequests';
 
 export default function PrDetail() {
+  const navigate = useNavigate();
   const [comments, setComments] = useState([
     {
       id: 1,
@@ -77,12 +78,12 @@ export default function PrDetail() {
       {/* Top Navigation Header */}
       <header className="h-14 border-b border-gray-200 flex items-center justify-between px-6 bg-white shrink-0">
         <div className="flex items-center space-x-3">
-          <Link
-            to="/pull-requests"
+          <button
+            onClick={() => navigate(-1)}
             className="text-xs bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded border border-gray-300 text-gray-700 transition-colors"
           >
             ← Back to PRs
-          </Link>
+          </button>
           <span className="text-base font-semibold tracking-tight text-gray-800">
             PR #42: Add JWT Auth & Rate Limiting
           </span>

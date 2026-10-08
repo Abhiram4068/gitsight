@@ -76,7 +76,7 @@ export default function Dashboard() {
         {stats.map((stat) => (
           <div
             key={stat.id}
-            className="bg-white  p-5 rounded-lg shadow-sm flex flex-col justify-between hover:border-gray-300 transition-colors"
+            className="bg-white  p-5 rounded-lg shadow-md flex flex-col justify-between hover:border-gray-300 transition-colors"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -103,8 +103,7 @@ export default function Dashboard() {
 
       {/* Quick Status / Engine Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Agent Operational Status */}
-        <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm space-y-3">
+        {/* <div className="bg-white border border-gray-200 rounded-lg p-5 shadow-sm space-y-3">
           <div className="flex items-center justify-between border-b border-gray-100 pb-2">
             <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">
               GitSight Review Engine
@@ -130,8 +129,6 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
-
-        {/* Quick Launch & Guidance */}
         <div className="bg-gray-50 border border-gray-200 rounded-lg p-5 flex flex-col justify-between">
           <div className="space-y-2">
             <span className="text-xs font-bold text-gray-800 uppercase tracking-wider">
@@ -156,7 +153,7 @@ export default function Dashboard() {
               Open PR Review Queue →
             </Link>
           </div>
-        </div>
+        </div>  */}
       </div>
     </div>
   );
