@@ -88,3 +88,22 @@ public class PullRequestDto
     public DateTime? ClosedAt { get; set; }
     public DateTime? MergedAt { get; set; }
 }
+
+public class PullRequestFileDto
+{
+    public string FileName { get; set; } = string.Empty;
+    public string Status { get; set; } = string.Empty; // added, modified, removed
+    public int Additions { get; set; }
+    public int Deletions { get; set; }
+    public int Changes { get; set; }
+    public string Patch { get; set; } = string.Empty;
+    public List<DiffLineDto> DiffLines { get; set; } = new();
+}
+
+public class DiffLineDto
+{
+    public string Type { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public int? LineBase { get; set; }
+    public int? LineCompare { get; set; }
+}

@@ -168,6 +168,21 @@ public class PullRequestsController : ControllerBase
         var totalCount = query.Count();
         var items = query.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
 
+        // Fetch detailed stats for the paginated items concurrently
+        var fetchStatsTasks = items.Select(async item =>
+        {
+            // Only fetch if it's a real GitHub PR (not a fallback item with 0 additions)
+            if (!string.IsNullOrEmpty(token))
+            {
+                var stats = await _gitHubService.GetPullRequestStatsAsync(token, targetOwner, targetRepo, item.PrNumber);
+                item.Additions = stats.Additions;
+                item.Deletions = stats.Deletions;
+                item.ChangedFiles = stats.ChangedFiles;
+            }
+        });
+
+        await Task.WhenAll(fetchStatsTasks);
+
         var paginatedResult = new PaginatedResponseDto<PullRequestDto>(items, totalCount, pageNumber, pageSize);
         return Ok(ApiResponse<PaginatedResponseDto<PullRequestDto>>.SuccessResponse(paginatedResult, "Pull requests fetched successfully."));
     }
@@ -210,6 +225,34 @@ public class PullRequestsController : ControllerBase
         };
 
         return Ok(ApiResponse<PrDiffResponseDto>.SuccessResponse(diffDto, "PR Diff fetched successfully."));
+    }
+
+    [HttpGet("{owner}/{repo}/{prNumber}/files")]
+    public async Task<ActionResult<ApiResponse<List<PullRequestFileDto>>>> GetPullRequestFiles(string owner, string repo, int prNumber)
+    {
+        var token = _currentUserService.GitHubAccessToken;
+        if (string.IsNullOrEmpty(token))
+        {
+            return Unauthorized(ApiResponse<List<PullRequestFileDto>>.FailureResponse("GitHub token missing.", 401));
+        }
+
+        var files = await _gitHubService.GetPullRequestFilesAsync(token, owner, repo, prNumber);
+        
+        return Ok(ApiResponse<List<PullRequestFileDto>>.SuccessResponse(files, "PR files fetched successfully."));
+    }
+
+    [HttpGet("{owner}/{repo}/{prNumber}/stats")]
+    public async Task<ActionResult<ApiResponse<PullRequestDto>>> GetPullRequestStats(string owner, string repo, int prNumber)
+    {
+        var token = _currentUserService.GitHubAccessToken;
+        if (string.IsNullOrEmpty(token))
+        {
+            return Unauthorized(ApiResponse<PullRequestDto>.FailureResponse("GitHub token missing.", 401));
+        }
+
+        var prDetails = await _gitHubService.GetPullRequestStatsAsync(token, owner, repo, prNumber);
+
+        return Ok(ApiResponse<PullRequestDto>.SuccessResponse(prDetails, "PR details fetched successfully."));
     }
 
     [HttpPost("merge")]
