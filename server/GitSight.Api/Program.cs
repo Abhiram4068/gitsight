@@ -35,6 +35,7 @@ builder.Services.AddHttpClient<IAiReviewService, NvidiaService>(client =>
 // Register Repositories (Infrastructure)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
+
 // Register Application & Infrastructure Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRepositoryService, RepositoryService>();
