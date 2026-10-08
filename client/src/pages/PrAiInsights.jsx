@@ -1,52 +1,64 @@
 import React, { useState, useEffect } from 'react';
 
-const DashboardCards = () => (
+const DashboardCards = ({ insights }) => (
   <div className="flex flex-wrap items-center justify-center text-center gap-x-10 gap-y-4 pb-2">
     <div>
       <div className="text-xs text-gray-500 font-medium">Final Suggestions</div>
-      <div className="text-xl font-bold text-gray-900">3</div>
+      <div className="text-xl font-bold text-gray-900">{insights?.finalSuggestionsCount || 0}</div>
     </div>
     
     <div>
       <div className="text-xs text-gray-500 font-medium">Security</div>
-      <div className="text-xl font-bold text-gray-900">1</div>
+      <div className="text-xl font-bold text-gray-900">{insights?.securityIssuesCount || 0}</div>
     </div>
 
     <div>
       <div className="text-xs text-gray-500 font-medium">Syntax Errors</div>
-      <div className="text-xl font-bold text-gray-900">0</div>
+      <div className="text-xl font-bold text-gray-900">{insights?.syntaxErrorsCount || 0}</div>
     </div>
 
     <div>
       <div className="text-xs text-gray-500 font-medium">Breaches</div>
-      <div className="text-xl font-bold text-gray-900">0</div>
+      <div className="text-xl font-bold text-gray-900">{insights?.breachesCount || 0}</div>
     </div>
 
     <div>
       <div className="text-xs text-gray-500 font-medium">Performance Issues</div>
-      <div className="text-xl font-bold text-gray-900">1</div>
+      <div className="text-xl font-bold text-gray-900">{insights?.performanceIssuesCount || 0}</div>
     </div>
 
     <div>
       <div className="text-xs text-gray-500 font-medium">Code Smells</div>
-      <div className="text-xl font-bold text-gray-900">2</div>
+      <div className="text-xl font-bold text-gray-900">{insights?.codeSmellsCount || 0}</div>
     </div>
 
     <div>
       <div className="text-xs text-gray-500 font-medium">Test Coverage Impact</div>
-      <div className="text-xl font-bold text-red-600">-4.2%</div>
+      <div className={`text-xl font-bold ${insights?.testCoverageImpact < 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+        {insights?.testCoverageImpact > 0 ? '+' : ''}{insights?.testCoverageImpact || 0}%
+      </div>
     </div>
 
     <div>
       <div className="text-xs text-gray-500 font-medium">Code Complexity</div>
-      <div className="text-xl font-bold text-amber-600">High</div>
+      <div className="text-xl font-bold text-amber-600">{insights?.codeComplexity || 'N/A'}</div>
     </div>
   </div>
 );
 
+import { useLocation, useSearchParams } from 'react-router-dom';
+import { pullRequestsApi } from '../api/pullRequests';
+
 export default function PrAiInsights() {
   const [isLoading, setIsLoading] = useState(true);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [insights, setInsights] = useState(null);
   const [activeModal, setActiveModal] = useState(null);
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+
+  const repoParam = location.state?.repoParam || searchParams.get('repo');
+  const prNumberParam = location.state?.prNumberParam || searchParams.get('pr');
 
   const modalConfig = {
     export: { title: 'Export Review', message: 'Are you sure you want to export this review report?', confirmText: 'Export', confirmColor: 'bg-blue-600 hover:bg-blue-700' },
@@ -54,12 +66,44 @@ export default function PrAiInsights() {
     flag: { title: 'Flag Review', message: 'Flag this review for further investigation?', confirmText: 'Flag', confirmColor: 'bg-amber-600 hover:bg-amber-700' }
   };
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
+  const fetchInsights = async () => {
+    if (!repoParam || !prNumberParam) return;
+    const [owner, repo] = repoParam.split('/');
+    try {
+      setIsLoading(true);
+      // Try to fetch existing insights from DB
+      const data = await pullRequestsApi.getInsights({ owner, repo, prNumber: prNumberParam });
+      setInsights(data);
       setIsLoading(false);
-    }, 1200);
-    return () => clearTimeout(timer);
-  }, []);
+    } catch (error) {
+      if (error.response?.status === 404) {
+        // If not found in DB, auto-trigger the AI generation!
+        console.log("No existing review found. Triggering AI analysis...");
+        generateInsights();
+      } else {
+        console.error("Failed to fetch PR insights:", error);
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const generateInsights = async () => {
+    if (!repoParam || !prNumberParam) return;
+    const [owner, repo] = repoParam.split('/');
+    try {
+      setIsGenerating(true);
+      const data = await pullRequestsApi.analyzePr({ owner, repo, prNumber: prNumberParam });
+      setInsights(data);
+    } catch (error) {
+      console.error("Failed to generate PR insights:", error);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchInsights();
+  }, [repoParam, prNumberParam]);
 
   if (isLoading) {
     return (
@@ -72,67 +116,18 @@ export default function PrAiInsights() {
     );
   }
 
-  const reviewThreads = [
-    {
-      id: 1,
-      filePath: 'app/middleware/auth.py',
-      startLine: 4,
-      endLine: 8,
-      codeLines: [
-        { num: 4, text: 'def verify_token(token: str):', type: 'add' },
-        { num: 5, text: '    if not settings.SECRET_KEY:', type: 'add' },
-        { num: 6, text: '        return jwt.decode(token, "", algorithms=["HS256"])', type: 'add' },
-        { num: 7, text: '    return jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])', type: 'add' },
-      ],
-      author: 'GitSight',
-      time: '2 mins ago',
-      comment:
-        'Decoding with an empty string key fallback can cause unexpected security bypasses if settings.SECRET_KEY is undefined. Raise an explicit exception during startup instead.',
-      diffSuggestion: {
-        removed: 'return jwt.decode(token, "", algorithms=["HS256"])',
-        added: 'raise RuntimeError("SECRET_KEY environment variable is not configured")',
-      },
-    },
-    {
-      id: 2,
-      filePath: 'app/views/users.py',
-      startLine: 40,
-      endLine: 45,
-      codeLines: [
-        { num: 40, text: 'def get_user_profiles(user_ids: list[int]):', type: 'add' },
-        { num: 41, text: '    users = User.query.filter(User.id.in_(user_ids)).all()', type: 'add' },
-        { num: 42, text: '    return [{ "id": u.id, "profile": u.profile.bio } for u in users]', type: 'add' },
-      ],
-      author: 'GitSight ',
-      badge: 'bot',
-      time: '5 mins ago',
-      comment:
-        'Accessing u.profile.bio inside the comprehension issues an additional query per user record. Use joinedload or prefetch_related on the initial query.',
-      diffSuggestion: {
-        removed: 'users = User.query.filter(User.id.in_(user_ids)).all()',
-        added: 'users = User.query.options(joinedload(User.profile)).filter(User.id.in_(user_ids)).all()',
-      },
-    },
-    {
-      id: 3,
-      filePath: 'config/settings.py',
-      startLine: 12,
-      endLine: 16,
-      codeLines: [
-        { num: 14, text: 'API_KEY = "sk_live_99a8b7c6d5e4f3a2b1c0"', type: 'add' },
-        { num: 15, text: 'DEBUG = True', type: 'add' },
-      ],
-      author: 'GitSight',
-      badge: 'bot',
-      time: '8 mins ago',
-      comment:
-        'Detected hardcoded live API key string. Move sensitive keys to environment variable injection.',
-      diffSuggestion: {
-        removed: 'API_KEY = "sk_live_99a8b7c6d5e4f3a2b1c0"',
-        added: 'API_KEY = os.getenv("API_KEY")',
-      },
-    },
-  ];
+  if (!insights) {
+    return (
+      <div className="h-[60vh] flex flex-col items-center justify-center space-y-4">
+        <h2 className="text-lg font-bold text-gray-900">AI Review Pending</h2>
+        <p className="text-sm text-gray-500 max-w-sm text-center">
+          The automated AI review for this Pull Request has not completed yet, or is currently analyzing. Please check back later.
+        </p>
+      </div>
+    );
+  }
+
+  const reviewThreads = insights.issues || [];
 
   return (
     <div className="space-y-6">
@@ -141,7 +136,7 @@ export default function PrAiInsights() {
         <h1 className="text-xl font-bold text-gray-900 tracking-tight">AI Code Review Analysis</h1>
       </div>
 
-      <DashboardCards />
+      <DashboardCards insights={insights} />
 
       {/* Section Header */}
       <div className="flex items-center justify-between border-b border-gray-200 pb-3">
@@ -193,22 +188,24 @@ export default function PrAiInsights() {
                 </div>
 
                 {/* Code Snippet Block */}
-                <div className="bg-gray-50 border-b border-gray-200 font-mono text-xs overflow-x-auto">
-                  {thread.codeLines.map((line, idx) => (
-                    <div key={idx} className="flex items-center px-3 py-1 bg-emerald-50/50 text-emerald-900">
-                      <span className="w-8 text-right pr-3 text-gray-400 select-none text-[11px]">{line.num}</span>
-                      <span className="text-emerald-600 font-semibold select-none mr-2">+</span>
-                      <pre className="whitespace-pre">{line.text}</pre>
-                    </div>
-                  ))}
-                </div>
+                {thread.codeLines && (
+                  <div className="bg-gray-50 border-b border-gray-200 font-mono text-xs overflow-x-auto">
+                    {thread.codeLines.map((line, idx) => (
+                      <div key={idx} className="flex items-center px-3 py-1 bg-emerald-50/50 text-emerald-900">
+                        <span className="w-8 text-right pr-3 text-gray-400 select-none text-[11px]">{line.num}</span>
+                        <span className="text-emerald-600 font-semibold select-none mr-2">+</span>
+                        <pre className="whitespace-pre">{line.text}</pre>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* Comment Thread */}
                 <div className="p-4 space-y-3">
                   <div className="flex items-center space-x-2 text-xs">
-                    <span className="font-semibold text-gray-900">{thread.author}</span>
-
-                    <span className="text-gray-400">&bull; {thread.time}</span>
+                    <span className="font-semibold text-gray-900">{thread.author || 'GitSight AI'}</span>
+                    <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">{thread.issueType}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${thread.severity?.toLowerCase() === 'high' || thread.severity?.toLowerCase() === 'critical' ? 'bg-red-100 text-red-700' : thread.severity?.toLowerCase() === 'medium' || thread.severity?.toLowerCase() === 'warning' ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}`}>{thread.severity}</span>
                   </div>
 
                   <p className="text-xs text-gray-700 leading-relaxed">
@@ -216,21 +213,25 @@ export default function PrAiInsights() {
                   </p>
 
                   {/* Diff Suggestion Box */}
-                  {thread.diffSuggestion && (
+                  {(thread.suggestedRemovedCode || thread.suggestedAddedCode) && (
                     <div className="border border-gray-200 mt-3 font-mono text-xs rounded overflow-hidden">
                       <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 text-[11px] text-gray-600 font-semibold flex justify-between items-center">
                         <span>Suggested change</span>
                         <button className="text-blue-600 hover:text-blue-700 font-sans font-medium cursor-pointer">Export Suggestion</button>
                       </div>
                       <div className="bg-white">
-                        <div className="bg-red-50 text-red-800 px-3 py-1 border-l-2 border-red-500 flex items-center">
-                          <span className="text-red-500 mr-2 select-none font-bold">-</span>
-                          <span>{thread.diffSuggestion.removed}</span>
-                        </div>
-                        <div className="bg-emerald-50 text-emerald-800 px-3 py-1 border-l-2 border-emerald-500 flex items-center">
-                          <span className="text-emerald-500 mr-2 select-none font-bold">+</span>
-                          <span>{thread.diffSuggestion.added}</span>
-                        </div>
+                        {thread.suggestedRemovedCode && (
+                          <div className="bg-red-50 text-red-800 px-3 py-1 border-l-2 border-red-500 flex items-start">
+                            <span className="text-red-500 mr-2 select-none font-bold mt-0.5">-</span>
+                            <pre className="whitespace-pre-wrap">{thread.suggestedRemovedCode}</pre>
+                          </div>
+                        )}
+                        {thread.suggestedAddedCode && (
+                          <div className="bg-emerald-50 text-emerald-800 px-3 py-1 border-l-2 border-emerald-500 flex items-start">
+                            <span className="text-emerald-500 mr-2 select-none font-bold mt-0.5">+</span>
+                            <pre className="whitespace-pre-wrap">{thread.suggestedAddedCode}</pre>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

@@ -18,7 +18,7 @@ public class GeminiService : IGeminiService
         _settings = config.GetSection("GeminiSettings").Get<GeminiSettings>() ?? new GeminiSettings
         {
             ApiKey = config["Gemini:ApiKey"] ?? string.Empty,
-            Model = config["Gemini:Model"] ?? "gemini-2.5-flash"
+            Model = config["Gemini:Model"] ?? "gemini-3.8-flash"
         };
     }
 
@@ -28,35 +28,12 @@ public class GeminiService : IGeminiService
         {
             return new GeminiReviewResultDto
             {
-                Summary = "Gemini API key is not configured. Please set GeminiSettings:ApiKey in appsettings.json.",
-                RiskLevel = "UNKNOWN"
+                ExecutiveSummary = "Gemini API key is not configured. Please set GeminiSettings:ApiKey in appsettings.json.",
+                OverallConfidenceScore = 0
             };
         }
 
-        var systemPrompt = """
-        You are GitSight, an elite Staff Software Engineer and automated GitHub PR code review agent.
-        Your task is to analyze the provided git unified diff for bugs, logic errors, security vulnerabilities, performance bottlenecks, and architectural code smells.
-
-        CRITICAL OUTPUT REQUIREMENTS:
-        Respond ONLY with a valid, raw JSON object (no markdown code blocks, no backticks, no explanations outside the JSON).
-        The JSON must strictly conform to this schema:
-        {
-          "summary": "Concise 2-3 sentence overview of what this PR changes and its quality.",
-          "riskLevel": "LOW" | "MEDIUM" | "HIGH",
-          "keyFindings": [ "Bullet point finding 1", "Bullet point finding 2" ],
-          "inlineComments": [
-            {
-              "path": "path/to/file.ext",
-              "line": 15,
-              "side": "RIGHT",
-              "severity": "Info" | "Warning" | "Critical",
-              "comment": "Specific, actionable feedback pointing out the exact issue.",
-              "suggestedCode": "Optional replacement code snippet or null"
-            }
-          ]
-        }
-        For 'line', specify the NEW line number on the 'RIGHT' side of the diff. Do not invent line numbers.
-        """;
+        var systemPrompt = GeminiPrompts.SystemPrompt;
 
         var userMessage = $"""
         PULL REQUEST TITLE: {prTitle}
@@ -85,7 +62,7 @@ public class GeminiService : IGeminiService
             }
         };
 
-        var model = string.IsNullOrEmpty(_settings.Model) ? "gemini-2.5-flash" : _settings.Model;
+        var model = string.IsNullOrEmpty(_settings.Model) ? "gemini-3.8-flash" : _settings.Model;
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_settings.ApiKey}";
 
         using var request = new HttpRequestMessage(HttpMethod.Post, url);
@@ -97,8 +74,8 @@ public class GeminiService : IGeminiService
             var err = await response.Content.ReadAsStringAsync();
             return new GeminiReviewResultDto
             {
-                Summary = $"Failed to analyze diff with Gemini API: {response.StatusCode} - {err}",
-                RiskLevel = "ERROR"
+                ExecutiveSummary = $"Failed to analyze diff with Gemini API: {response.StatusCode} - {err}",
+                OverallConfidenceScore = 0
             };
         }
 
@@ -114,7 +91,7 @@ public class GeminiService : IGeminiService
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            return new GeminiReviewResultDto { Summary = "Empty response received from Gemini.", RiskLevel = "UNKNOWN" };
+            return new GeminiReviewResultDto { ExecutiveSummary = "Empty response received from Gemini.", OverallConfidenceScore = 0 };
         }
 
         // Clean any accidental markdown backticks
@@ -129,6 +106,6 @@ public class GeminiService : IGeminiService
             PropertyNameCaseInsensitive = true
         });
 
-        return result ?? new GeminiReviewResultDto { Summary = "Failed to deserialize Gemini output.", RiskLevel = "ERROR" };
+        return result ?? new GeminiReviewResultDto { ExecutiveSummary = "Failed to deserialize Gemini output.", OverallConfidenceScore = 0 };
     }
 }
