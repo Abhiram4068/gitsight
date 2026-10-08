@@ -97,13 +97,7 @@ export default function PrAiInsights() {
       message: "Mark this entire review as Critical?",
       confirmText: "Mark Critical",
       confirmColor: "bg-red-600 hover:bg-red-700",
-    },
-    flag: {
-      title: "Flag Review",
-      message: "Flag this review for further investigation?",
-      confirmText: "Flag",
-      confirmColor: "bg-amber-600 hover:bg-amber-700",
-    },
+    }
   };
 
   const fetchInsights = async () => {
@@ -197,19 +191,13 @@ export default function PrAiInsights() {
             onClick={() => setActiveModal("export")}
             className="text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
           >
-            Export
+            Export Review
           </button>
           <button
             onClick={() => setActiveModal("critical")}
             className="text-red-500 hover:text-red-700 transition-colors cursor-pointer"
           >
             Mark as Critical
-          </button>
-          <button
-            onClick={() => setActiveModal("flag")}
-            className="text-amber-600 hover:text-amber-800 transition-colors cursor-pointer"
-          >
-            Flag
           </button>
         </div>
       </div>

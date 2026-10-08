@@ -5,6 +5,7 @@ import { pullRequestsApi } from '../api/pullRequests';
 const AiNavbar = ({ navigate, location }) => {
   const [stats, setStats] = useState(null);
   const [searchParams] = useSearchParams();
+  const [isReReviewing, setIsReReviewing] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -24,6 +25,24 @@ const AiNavbar = ({ navigate, location }) => {
     fetchStats();
   }, [location.state, searchParams]);
 
+  const handleReReview = async () => {
+    const repoParam = location.state?.repoParam || searchParams.get('repo');
+    const prNumberParam = location.state?.prNumberParam || searchParams.get('pr');
+    if (!repoParam || !prNumberParam) return;
+    
+    const [owner, repo] = repoParam.split('/');
+    try {
+      setIsReReviewing(true);
+      await pullRequestsApi.analyzePr({ owner, repo, prNumber: prNumberParam });
+      // Reload the window so the nested insights component fetches the fresh data
+      window.location.reload();
+    } catch (error) {
+      console.error("Failed to trigger re-review:", error);
+    } finally {
+      setIsReReviewing(false);
+    }
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 shrink-0 sticky top-0 z-20">
       {/* Top utility bar */}
@@ -40,15 +59,25 @@ const AiNavbar = ({ navigate, location }) => {
       <div className="px-6 py-4 mx-auto w-full">
         {stats ? (
           <div className="space-y-2">
-            <div className="flex items-center space-x-3">
-              <h1 className="text-xl font-bold text-gray-900">{stats.title}</h1>
-              <span className="text-xl font-light text-gray-400">#{stats.prNumber}</span>
-              <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${stats.state?.toLowerCase() === 'closed' ? 'bg-emerald-100 text-emerald-700' : 'bg-green-100 text-green-700'}`}>
-                {stats.state?.toLowerCase()}
-              </span>
-              <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2.5 py-0.5 rounded-full">
-                {stats.repositoryFullName || (stats.htmlUrl && stats.htmlUrl.split('github.com/')[1]?.split('/pull')[0]) || "repository"}
-              </span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <h1 className="text-xl font-bold text-gray-900">{stats.title}</h1>
+                <span className="text-xl font-light text-gray-400">#{stats.prNumber}</span>
+                <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full ${stats.state?.toLowerCase() === 'closed' ? 'bg-emerald-100 text-emerald-700' : 'bg-green-100 text-green-700'}`}>
+                  {stats.state?.toLowerCase()}
+                </span>
+                <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2.5 py-0.5 rounded-full">
+                  {stats.repositoryFullName || (stats.htmlUrl && stats.htmlUrl.split('github.com/')[1]?.split('/pull')[0]) || "repository"}
+                </span>
+              </div>
+              <button
+                onClick={handleReReview}
+                disabled={isReReviewing}
+                className="inline-flex items-center space-x-1 text-xs font-medium bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 cursor-pointer transition-colors shrink-0"
+              >
+                <i className={`fa-solid fa-rotate-right ${isReReviewing ? 'animate-spin' : ''}`}></i>
+                <span>{isReReviewing ? 'Re-reviewing...' : 'Manual Re-review'}</span>
+              </button>
             </div>
             
             <div className="flex items-center text-xs text-gray-600 space-x-4">
