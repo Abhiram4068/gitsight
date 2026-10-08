@@ -60,7 +60,7 @@ public class GeminiService : IAiReviewService
 
         var primaryModel = string.IsNullOrEmpty(_settings.Model) ? "gemini-3.1-flash-lite" : _settings.Model;
         // The list of models to try in order
-        var modelsToTry = new[] { primaryModel, "gemini-3.0-flash-preview" }; 
+        var modelsToTry = new[] { primaryModel, "gemini-3-flash-preview" }; 
         
         HttpResponseMessage response = null;
         string currentModel = primaryModel;
