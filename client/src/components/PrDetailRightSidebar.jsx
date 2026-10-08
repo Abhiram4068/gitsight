@@ -30,7 +30,7 @@ export default function PrDetailRightSidebar({ files, setFiles }) {
               }}
               className="flex items-center justify-between px-3 py-2 hover:bg-gray-50 text-left text-xs group cursor-pointer transition-colors"
             >
-              <span className="font-mono text-gray-700 truncate mr-2 group-hover:text-blue-600">
+              <span className=" text-gray-700 truncate mr-2 group-hover:text-blue-600">
                 {file.name}
               </span>
               <div className="flex items-center space-x-1.5 shrink-0 text-[10px]">

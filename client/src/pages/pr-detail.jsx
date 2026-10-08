@@ -217,7 +217,7 @@ export default function PrDetail() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Main Code Diff View (Read-Only Editor Simulation) */}
-        <main className="flex-1 bg-gray-900 text-gray-100 flex flex-col font-sans">
+        <main className="flex-1 min-w-0 bg-gray-900 text-gray-100 flex flex-col font-sans">
           
           {/* Top Toolbar (Fixed) */}
           <div className="flex-none flex items-center justify-between bg-gray-950 px-4 py-3 border-b border-gray-800 shadow-sm z-10">
