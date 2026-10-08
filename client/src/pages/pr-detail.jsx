@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { pullRequestsApi } from '../api/pullRequests';
+import PrDetailRightSidebar from '../components/PrDetailRightSidebar';
 
 export default function PrDetail() {
   const navigate = useNavigate();
@@ -22,6 +23,57 @@ export default function PrDetail() {
   const [newComment, setNewComment] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [searchParams] = useSearchParams();
+  const repoParam = searchParams.get('repo');
+  const prNumberParam = searchParams.get('pr');
+
+  const [files, setFiles] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchPrData() {
+      if (!repoParam || !prNumberParam) return;
+      
+      const [owner, repo] = repoParam.split('/');
+      
+      try {
+        setIsLoading(true);
+        const [filesData, statsData] = await Promise.all([
+          pullRequestsApi.getPrFiles({ owner, repo, prNumber: prNumberParam }),
+          pullRequestsApi.getPrStats({ owner, repo, prNumber: prNumberParam })
+        ]);
+
+        if (filesData) {
+          setFiles(filesData.map((f, i) => ({
+            ...f,
+            id: i,
+            name: f.fileName,
+            isExpanded: true,
+            isViewed: false
+          })));
+        }
+        if (statsData) {
+          setStats(statsData);
+        }
+      } catch (error) {
+        console.error("Failed to load PR details:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchPrData();
+  }, [repoParam, prNumberParam]);
+
+  const toggleFile = (id) => {
+    setFiles(files.map(f => f.id === id ? { ...f, isExpanded: !f.isExpanded } : f));
+  };
+
+  const toggleViewed = (id) => {
+    setFiles(files.map(f => f.id === id ? { ...f, isViewed: !f.isViewed } : f));
+  };
 
   const handleAddComment = (e) => {
     e.preventDefault();
@@ -73,41 +125,86 @@ export default function PrDetail() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <div className="h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <i className="fa-solid fa-circle-notch fa-spin text-xs text-blue-600 mb-4"></i>
+        <h2 className="text-sm font-bold text-gray-800">Loading Pull Request</h2>
+      </div>
+    );
+  }
+
   return (
-    <div className="bg-white text-gray-900 min-h-screen flex flex-col">
-      {/* Top Navigation Header */}
-      <header className="h-14 border-b border-gray-200 flex items-center justify-between px-6 bg-white shrink-0">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-xs bg-gray-100 hover:bg-gray-200 px-2.5 py-1 rounded border border-gray-300 text-gray-700 transition-colors"
-          >
-            ← Back to PRs
-          </button>
-          <span className="text-base font-semibold tracking-tight text-gray-800">
-            PR #42: Add JWT Auth & Rate Limiting
-          </span>
-          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded font-mono">
-            org-dev/fastapi-backend-service
-          </span>
+    <div className="bg-white text-gray-900 h-screen overflow-hidden flex flex-col">
+      {/* Unified PR Header & Info Section */}
+      <div className="px-6 py-4 border-b border-gray-200 bg-white shrink-0">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-xs hover:text-gray-600 font-medium flex items-center space-x-1 text-gray-700 cursor-pointer transition-colors"
+            >
+              <span>&larr; Back to PRs</span>
+            </button>
+            <h1 className="text-xl font-bold text-gray-900">{stats.title}</h1>
+            <span className="text-gray-500 text-xl font-light">#{stats.prNumber}</span>
+            <span className="px-3 py-1 font-medium rounded-full text-xs bg-emerald-600 text-white shadow-xs">{stats.state}</span>
+            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+            {stats.repositoryFullName}
+            </span>
+          </div>
         </div>
 
-        {/* Action Control Buttons */}
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={handlePostComments}
-            className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded text-xs flex items-center space-x-1.5 shadow-sm transition-colors cursor-pointer"
-          >
-            <span>💬</span> <span>Post Comments to GitHub</span>
-          </button>
-          <button
-            onClick={handleMergePr}
-            className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white font-medium rounded text-xs flex items-center space-x-1.5 shadow-sm transition-colors cursor-pointer"
-          >
-            <span>🔀</span> <span>Merge PR on GitHub</span>
-          </button>
+        <div className="flex items-center justify-between">
+          <div className="text-sm text-gray-600 flex items-center pl-1">
+            <div className="flex items-center ">
+              <span className="text-gray-500 text-sm mr-1"><span className="font-medium text-gray-900">{stats.author}</span> wants to merge</span>
+              <span className="text-blue-700 px-1 py-0.5 text-sm font-bold font-mono">{stats.headBranch}</span> 
+              <span className="text-gray-500 text-xs mx-1">into</span> 
+              <span className="text-blue-700 px-1 py-0.5 text-sm font-bold font-mono">{stats.baseBranch}</span>
+            </div>
+
+            {stats.createdAt && (
+              <>
+                <span className="text-gray-400 font-medium mx-4">&bull;</span>
+                <div className="flex items-center text-xs">
+                  <span className="text-gray-500">Opened:</span> 
+                  <span className="text-gray-700 ml-1">{new Date(stats.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                </div>
+              </>
+            )}
+
+            <span className="text-gray-400 font-medium mx-4">&bull;</span>
+            <div className="flex items-center space-x-3 text-sm">
+              <span className="text-gray-900 font-medium">{files.length} Files changed</span>
+              {stats && (
+                <div className="flex items-center space-x-2 text-xs font-mono">
+                  <span className="text-green-600">+{stats.additions || 0}</span>
+                  <span className="text-red-600">-{stats.deletions || 0}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-center space-x-4">
+            <a 
+              href={`https://github.com/${repoParam}/pull/${prNumberParam}`}
+              target="_blank" 
+              rel="noreferrer" 
+              className="text-blue-600 hover:underline text-xs font-medium flex items-center space-x-1 cursor-pointer"
+            >
+              <span>View this pull request on GitHub</span>
+            </a>
+            <button 
+              onClick={() => navigate('/pr-ai-insights')}
+              className="bg-gray-900 text-white text-xs px-4 py-2 rounded font-medium hover:bg-gray-800 transition-colors cursor-pointer flex items-center space-x-2 shadow-sm"
+            >
+              <span>Go to Review Page</span>
+              <i className="fa-solid fa-arrow-right"></i>
+            </button>
+          </div>
         </div>
-      </header>
+      </div>
 
       {statusMessage && (
         <div className="bg-blue-50 border-b border-blue-200 px-6 py-2 text-xs text-blue-800 flex items-center justify-between">
@@ -118,93 +215,105 @@ export default function PrDetail() {
         </div>
       )}
 
-      <div className="flex flex-1 overflow-hidden h-[calc(100vh-3.5rem)]">
+      <div className="flex flex-1 overflow-hidden">
         {/* Main Code Diff View (Read-Only Editor Simulation) */}
-        <main className="flex-1 p-4 bg-gray-900 text-gray-100 overflow-y-auto font-mono text-xs leading-relaxed select-none">
-          <div className="bg-gray-800 px-3 py-1.5 text-gray-400 text-xs border-b border-gray-700 flex justify-between rounded-t">
-            <span>📄 app/middleware/auth.py (Read-Only View)</span>
-            <span className="text-amber-400">🔒 Editing Disabled (Review Mode)</span>
+        <main className="flex-1 bg-gray-900 text-gray-100 flex flex-col font-sans">
+          
+          {/* Top Toolbar (Fixed) */}
+          <div className="flex-none flex items-center justify-between bg-gray-950 px-4 py-3 border-b border-gray-800 shadow-sm z-10">
+            <div className="flex items-center space-x-2 w-1/2 max-w-md">
+              <div className="relative w-full">
+                <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-500 text-xs"></i>
+                <input 
+                  type="text" 
+                  placeholder="Search files..." 
+                  className="w-full bg-gray-900 border border-gray-700 rounded text-xs text-gray-200 pl-8 pr-3 py-1.5 focus:outline-none focus:border-gray-500 focus:bg-gray-800 transition-colors shadow-inner"
+                />
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <button 
+                onClick={() => setFiles(files.map(f => ({ ...f, isExpanded: false })))}
+                className="text-xs bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-gray-600 text-gray-300 hover:text-white px-3 py-1.5 rounded transition-all cursor-pointer font-medium shadow-sm"
+              >
+                Collapse all
+              </button>
+
+            </div>
           </div>
 
-          <div className="p-3 bg-gray-950 rounded-b space-y-1">
-            <div className="text-gray-500">1 import jwt</div>
-            <div className="text-gray-500">2 from fastapi import Request, HTTPException</div>
-            <div className="text-gray-500">3 </div>
-            <div className="bg-red-950/60 text-red-300 px-2 py-0.5 border-l-2 border-red-500">
-              - 4 def verify_token(token: str):
+          {/* Code Files Scrollable Area */}
+          <div className="flex-1 p-4 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-900 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
+            {files.map(file => (
+            <div key={file.id} id={`diff-file-${file.id}`} className="border border-gray-700 mb-2 rounded bg-gray-900 shadow-sm">
+              <div 
+                className={`flex items-center justify-between px-3 py-2 bg-gray-800 hover:bg-gray-700 transition-colors cursor-pointer ${file.isExpanded ? 'rounded-t-md border-b border-gray-700' : 'rounded-md'}`}
+                onClick={() => toggleFile(file.id)}
+              >
+                <div className="flex items-center space-x-3">
+                  <i className={`fa-solid ${file.isExpanded ? 'fa-chevron-down text-gray-300' : 'fa-chevron-right text-gray-500'} text-[10px]`}></i>
+                  <span className={`${file.isExpanded ? 'text-gray-100' : 'text-gray-300'} font-mono text-xs hover:text-blue-400 hover:underline`}>{file.name}</span>
+                  <button onClick={(e) => e.stopPropagation()} className="text-gray-500 hover:text-gray-300" title="Copy path"><i className="fa-regular fa-copy text-xs"></i></button>
+                </div>
+                <div className="flex items-center space-x-3 text-xs" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center space-x-2 mr-2">
+                    {file.status && (
+                      <span className={`flex items-center justify-center w-4 h-4 text-[10px] ${
+                        file.status === 'added' ? 'text-green-500' :
+                        file.status === 'removed' ? 'text-red-500' :
+                        'text-amber-500'
+                      }`}>
+                        {file.status === 'added' ? 'A' : file.status === 'removed' ? 'D' : 'M'}
+                      </span>
+                    )}
+                    <span className="w-24 text-right text-blue-400 font-mono">+{file.additions || 0} Additions</span>
+                    <span className="w-24 text-right text-red-400 font-mono">-{file.deletions || 0} Deletions</span>
+                    <div className="flex space-x-0.5" title={`${file.additions || 0} additions, ${file.deletions || 0} deletions`}>
+
+                    </div>
+                  </div>
+                  
+                </div>
+              </div>
+
+              {file.isExpanded && (
+                <div className="bg-gray-950 font-mono text-[11px] leading-relaxed select-text overflow-x-auto overflow-y-auto max-h-[500px] rounded-b-md [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-gray-900 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
+                  {(file.diffLines || []).map((line, idx) => (
+                    <div key={idx} className={`flex items-stretch cursor-pointer transition-colors ${
+                      line.type === 'chunk' ? 'bg-blue-900/30 text-blue-300 border-b border-gray-800 hover:bg-blue-900/50' :
+                      line.type === 'added' ? 'bg-green-900/20 text-green-300 hover:bg-green-900/40' :
+                      line.type === 'deleted' ? 'bg-red-900/20 text-red-300 hover:bg-red-900/40' :
+                      'text-gray-400 hover:bg-gray-800/60'
+                    }`}>
+                      <div className="w-10 px-2 py-0.5 text-right border-r border-gray-700 bg-gray-900 text-gray-500 select-none">
+                        {line.type === 'chunk' ? '...' : line.lineBase || ''}
+                      </div>
+                      <div className={`w-10 px-2 py-0.5 text-right border-r border-gray-700 select-none ${
+                        line.type === 'chunk' ? 'bg-gray-900 text-gray-500' :
+                        line.type === 'added' ? 'bg-green-900/40 text-green-400 cursor-pointer hover:bg-green-800/60' :
+                        line.type === 'deleted' ? 'bg-red-900/40 text-red-400 cursor-pointer hover:bg-red-800/60' :
+                        'bg-gray-900/40 text-gray-400 cursor-pointer hover:bg-gray-800/60'
+                      }`}>
+                        {line.type === 'chunk' ? '...' : line.lineCompare || ''}
+                      </div>
+                      <div className={`flex-1 px-4 py-0.5 ${
+                        line.type === 'added' ? 'border-l-2 border-green-500' :
+                        line.type === 'deleted' ? 'border-l-2 border-red-500' :
+                        line.type === 'chunk' ? 'font-medium' :
+                        ''
+                      }`}>
+                        {line.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <div className="bg-red-950/60 text-red-300 px-2 py-0.5 border-l-2 border-red-500">
-              - 5 return jwt.decode(token, &quot;SECRET_KEY&quot;, algorithms=[&quot;HS256&quot;])
-            </div>
-            <div className="bg-green-950/60 text-green-300 px-2 py-0.5 border-l-2 border-green-500">
-              + 4 def verify_token(token: str):
-            </div>
-            <div className="bg-green-950/60 text-green-300 px-2 py-0.5 border-l-2 border-green-500">
-              + 5 # GitSight Comment: Avoid hardcoding secrets
-            </div>
-            <div className="bg-green-950/60 text-green-300 px-2 py-0.5 border-l-2 border-green-500">
-              + 6 return jwt.decode(token, settings.SECRET_KEY, algorithms=[&quot;HS256&quot;])
-            </div>
-            <div className="text-gray-500">7 </div>
-            <div className="text-gray-500">8 async def rate_limit_middleware(request: Request, call_next):</div>
-            <div className="text-gray-500">9 # Process rate limits</div>
+          ))}
           </div>
         </main>
 
-        {/* Right Side: GitSight AI Analysis Summary & Comment Drawer */}
-        <aside className="w-96 border-l border-gray-200 bg-gray-50 p-4 space-y-4 overflow-y-auto flex flex-col shrink-0">
-          {/* AI Summary Box */}
-          <div className="border border-blue-200 rounded-md bg-white p-3 shadow-sm">
-            <div className="flex items-center space-x-2 border-b border-gray-100 pb-2 mb-2">
-              <span className="text-blue-600 font-bold text-sm">🤖 GitSight Agent Summary</span>
-            </div>
-            <p className="text-xs text-gray-600 leading-normal">
-              This PR replaces hardcoded JWT signing keys with configurable settings and introduces
-              token validation middleware.
-            </p>
-            <div className="mt-2 text-[11px] bg-green-50 text-green-700 p-2 rounded border border-green-200">
-              ✓ Security Improvement: Hardcoded secret key replaced.
-            </div>
-          </div>
-
-          {/* In-Platform Comments Section */}
-          <div className="flex-1 flex flex-col border border-gray-200 rounded-md bg-white p-3 shadow-sm min-h-[320px]">
-            <div className="flex justify-between items-center border-b border-gray-100 pb-2 mb-2">
-              <span className="font-bold text-xs text-gray-700">
-                Review Comments ({comments.length})
-              </span>
-              <span className="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-medium">
-                Draft
-              </span>
-            </div>
-
-            <div className="space-y-3 text-xs overflow-y-auto flex-1 pr-1">
-              {comments.map((c) => (
-                <div key={c.id} className="p-2 bg-gray-50 rounded border border-gray-200">
-                  <div className="font-semibold text-gray-800">{c.author}</div>
-                  <p className="text-gray-600 mt-1">{c.text}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Add Comment Input */}
-            <form onSubmit={handleAddComment} className="mt-3 pt-2 border-t border-gray-100">
-              <textarea
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                className="w-full text-xs p-2 border border-gray-300 rounded bg-gray-50 focus:bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                rows="2"
-                placeholder="Add inline review comment..."
-              />
-              <button
-                type="submit"
-                className="mt-1 w-full bg-gray-900 text-white text-xs py-1.5 rounded font-medium hover:bg-gray-800 transition-colors cursor-pointer"
-              >
-                Add Review Comment
-              </button>
-            </form>
-          </div>
-        </aside>
+        <PrDetailRightSidebar files={files} setFiles={setFiles} />
       </div>
     </div>
   );
