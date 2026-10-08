@@ -4,6 +4,7 @@ using GitSight.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GitSight.Infrastructure.Migrations
 {
     [DbContext(typeof(GitSightDbContext))]
-    partial class GitSightDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261008094925_UpdateAiReviewEntities")]
+    partial class UpdateAiReviewEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

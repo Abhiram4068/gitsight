@@ -4,6 +4,7 @@ using GitSight.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GitSight.Infrastructure.Migrations
 {
     [DbContext(typeof(GitSightDbContext))]
-    partial class GitSightDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261008093629_AddAiReviewEntities")]
+    partial class AddAiReviewEntities
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -105,19 +108,11 @@ namespace GitSight.Infrastructure.Migrations
                     b.Property<decimal>("OverallConfidenceScore")
                         .HasColumnType("decimal(18,2)");
 
-                    b.Property<string>("Owner")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
                     b.Property<int>("PerformanceIssuesCount")
                         .HasColumnType("int");
 
-                    b.Property<int>("PrNumber")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Repo")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                    b.Property<Guid>("PullRequestId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("SecurityIssuesCount")
                         .HasColumnType("int");
@@ -129,6 +124,9 @@ namespace GitSight.Infrastructure.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("PullRequestId")
+                        .IsUnique();
 
                     b.ToTable("AiReviewSessions");
                 });
@@ -343,6 +341,17 @@ namespace GitSight.Infrastructure.Migrations
                     b.Navigation("Session");
                 });
 
+            modelBuilder.Entity("GitSight.Domain.Entities.AiReviewSession", b =>
+                {
+                    b.HasOne("GitSight.Domain.Entities.PullRequest", "PullRequest")
+                        .WithOne("AiReviewSession")
+                        .HasForeignKey("GitSight.Domain.Entities.AiReviewSession", "PullRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("PullRequest");
+                });
+
             modelBuilder.Entity("GitSight.Domain.Entities.PullRequest", b =>
                 {
                     b.HasOne("GitSight.Domain.Entities.Repository", "Repository")
@@ -383,6 +392,8 @@ namespace GitSight.Infrastructure.Migrations
 
             modelBuilder.Entity("GitSight.Domain.Entities.PullRequest", b =>
                 {
+                    b.Navigation("AiReviewSession");
+
                     b.Navigation("Comments");
                 });
 

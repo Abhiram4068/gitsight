@@ -196,7 +196,7 @@ export default function PrDetail() {
               <span>View this pull request on GitHub</span>
             </a>
             <button 
-              onClick={() => navigate('/pr-ai-insights')}
+              onClick={() => navigate(`/pr-ai-insights?repo=${repoParam}&pr=${prNumberParam}`, { state: { repoParam, prNumberParam } })}
               className="bg-gray-900 text-white text-xs px-4 py-2 rounded font-medium hover:bg-gray-800 transition-colors cursor-pointer flex items-center space-x-2 shadow-sm"
             >
               <span>Go to Review Page</span>
