@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace GitSight.Infrastructure.Services;
 
-public class GeminiService : IGeminiService
+public class GeminiService : IAiReviewService
 {
     private readonly HttpClient _httpClient;
     private readonly GeminiSettings _settings;
@@ -26,11 +26,7 @@ public class GeminiService : IGeminiService
     {
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
-            return new GeminiReviewResultDto
-            {
-                ExecutiveSummary = "Gemini API key is not configured. Please set GeminiSettings:ApiKey in appsettings.json.",
-                OverallConfidenceScore = 0
-            };
+            throw new InvalidOperationException("Gemini API key is not configured. Please set GeminiSettings:ApiKey in appsettings.json.");
         }
 
         var systemPrompt = GeminiPrompts.SystemPrompt;
@@ -65,18 +61,39 @@ public class GeminiService : IGeminiService
         var model = string.IsNullOrEmpty(_settings.Model) ? "gemini-3.8-flash" : _settings.Model;
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_settings.ApiKey}";
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, url);
-        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-
-        var response = await _httpClient.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
+        HttpResponseMessage response = null;
+        int maxRetries = 3;
+        
+        for (int i = 0; i < maxRetries; i++)
         {
-            var err = await response.Content.ReadAsStringAsync();
-            return new GeminiReviewResultDto
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            response = await _httpClient.SendAsync(request);
+            
+            if (response.IsSuccessStatusCode)
             {
-                ExecutiveSummary = $"Failed to analyze diff with Gemini API: {response.StatusCode} - {err}",
-                OverallConfidenceScore = 0
-            };
+                break; // Success! Exit the retry loop.
+            }
+            
+            // If it's a 429 (Too Many Requests) or a 500+ (Traffic/Service Unavailable), wait and retry
+            if ((int)response.StatusCode == 429 || (int)response.StatusCode >= 500)
+            {
+                if (i == maxRetries - 1)
+                {
+                    var err = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"Gemini API overloaded. Failed after {maxRetries} retries: {response.StatusCode} - {err}");
+                }
+                
+                // Exponential backoff: Wait 2s, then 4s, then 8s
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, i + 1)));
+            }
+            else
+            {
+                // Unrecoverable error (like 400 Bad Request, 401 Unauthorized)
+                var err = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"Failed to analyze diff with Gemini API: {response.StatusCode} - {err}");
+            }
         }
 
         var json = await response.Content.ReadAsStringAsync();
@@ -91,7 +108,7 @@ public class GeminiService : IGeminiService
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            return new GeminiReviewResultDto { ExecutiveSummary = "Empty response received from Gemini.", OverallConfidenceScore = 0 };
+            throw new InvalidOperationException("Empty response received from Gemini.");
         }
 
         // Clean any accidental markdown backticks
@@ -106,6 +123,6 @@ public class GeminiService : IGeminiService
             PropertyNameCaseInsensitive = true
         });
 
-        return result ?? new GeminiReviewResultDto { ExecutiveSummary = "Failed to deserialize Gemini output.", OverallConfidenceScore = 0 };
+        return result ?? throw new InvalidOperationException("Failed to deserialize Gemini output.");
     }
 }

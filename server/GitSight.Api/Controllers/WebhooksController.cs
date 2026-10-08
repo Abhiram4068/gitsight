@@ -14,13 +14,13 @@ public class WebhooksController : ControllerBase
 {
     private readonly IApplicationDbContext _context;
     private readonly IGitHubService _gitHubService;
-    private readonly IGeminiService _geminiService;
+    private readonly IAiReviewService _geminiService;
     private readonly ILogger<WebhooksController> _logger;
 
     public WebhooksController(
         IApplicationDbContext context,
         IGitHubService gitHubService,
-        IGeminiService geminiService,
+        IAiReviewService geminiService,
         ILogger<WebhooksController> logger)
     {
         _context = context;

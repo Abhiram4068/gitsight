@@ -18,14 +18,14 @@ public class PullRequestsController : ControllerBase
 {
     private readonly IApplicationDbContext _context;
     private readonly IGitHubService _gitHubService;
-    private readonly IGeminiService _geminiService;
+    private readonly IAiReviewService _geminiService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IValidator<MergePrRequestDto> _mergeValidator;
 
     public PullRequestsController(
         IApplicationDbContext context,
         IGitHubService gitHubService,
-        IGeminiService geminiService,
+        IAiReviewService geminiService,
         ICurrentUserService currentUserService,
         IValidator<MergePrRequestDto> mergeValidator)
     {

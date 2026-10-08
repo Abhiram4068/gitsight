@@ -27,7 +27,10 @@ builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<Gi
 // Register HttpClients & Infrastructure Services
 builder.Services.AddHttpClient<IGitHubAuthService, GitHubAuthService>();
 builder.Services.AddHttpClient<IGitHubService, GitHubService>();
-builder.Services.AddHttpClient<IGeminiService, GeminiService>();
+builder.Services.AddHttpClient<IAiReviewService, NvidiaService>(client => 
+{
+    client.Timeout = TimeSpan.FromMinutes(5);
+});
 
 // Register Repositories (Infrastructure)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
