@@ -31,6 +31,16 @@ export const pullRequestsApi = {
     return response.data?.data;
   },
 
+  getInsights: async ({ owner, repo, prNumber }) => {
+    const response = await axiosClient.get(`/api/pullrequests/${owner}/${repo}/${prNumber}/insights`);
+    return response.data?.data;
+  },
+
+  analyzePr: async ({ owner, repo, prNumber }) => {
+    const response = await axiosClient.post(`/api/pullrequests/${owner}/${repo}/${prNumber}/analyze`);
+    return response.data?.data;
+  },
+
   mergePullRequest: async ({ repositoryId, pullRequestNumber, mergeStrategy = 'squash', commitTitle }) => {
     const response = await axiosClient.post('/api/pullrequests/merge', {
       repositoryId,

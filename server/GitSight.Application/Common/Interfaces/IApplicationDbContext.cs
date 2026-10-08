@@ -9,5 +9,7 @@ public interface IApplicationDbContext
     DbSet<Repository> Repositories { get; }
     DbSet<PullRequest> PullRequests { get; }
     DbSet<ReviewComment> ReviewComments { get; }
+    DbSet<AiReviewSession> AiReviewSessions { get; }
+    DbSet<AiReviewIssue> AiReviewIssues { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -18,14 +18,14 @@ public class PullRequestsController : ControllerBase
 {
     private readonly IApplicationDbContext _context;
     private readonly IGitHubService _gitHubService;
-    private readonly IGeminiService _geminiService;
+    private readonly IAiReviewService _geminiService;
     private readonly ICurrentUserService _currentUserService;
     private readonly IValidator<MergePrRequestDto> _mergeValidator;
 
     public PullRequestsController(
         IApplicationDbContext context,
         IGitHubService gitHubService,
-        IGeminiService geminiService,
+        IAiReviewService geminiService,
         ICurrentUserService currentUserService,
         IValidator<MergePrRequestDto> mergeValidator)
     {
@@ -253,6 +253,92 @@ public class PullRequestsController : ControllerBase
         var prDetails = await _gitHubService.GetPullRequestStatsAsync(token, owner, repo, prNumber);
 
         return Ok(ApiResponse<PullRequestDto>.SuccessResponse(prDetails, "PR details fetched successfully."));
+    }
+
+    [HttpGet("{owner}/{repo}/{prNumber}/insights")]
+    public async Task<ActionResult<ApiResponse<AiReviewSession>>> GetPullRequestInsights(string owner, string repo, int prNumber)
+    {
+        var session = await _context.AiReviewSessions
+            .Include(s => s.Issues)
+            .FirstOrDefaultAsync(s => s.Owner == owner && s.Repo == repo && s.PrNumber == prNumber);
+
+        if (session == null)
+        {
+            return NotFound(ApiResponse<AiReviewSession>.FailureResponse("No AI insights found for this pull request.", 404));
+        }
+
+        return Ok(ApiResponse<AiReviewSession>.SuccessResponse(session, "AI Code Review insights fetched successfully."));
+    }
+
+    [HttpPost("{owner}/{repo}/{prNumber}/analyze")]
+    public async Task<ActionResult<ApiResponse<AiReviewSession>>> AnalyzePullRequest(string owner, string repo, int prNumber)
+    {
+        var token = _currentUserService.GitHubAccessToken;
+        if (string.IsNullOrEmpty(token))
+        {
+            return Unauthorized(ApiResponse<AiReviewSession>.FailureResponse("GitHub token missing.", 401));
+        }
+
+        // 1. Check if AI review already exists in the database to save Gemini tokens
+        var existingSession = await _context.AiReviewSessions
+            .Include(s => s.Issues)
+            .FirstOrDefaultAsync(s => s.Owner == owner && s.Repo == repo && s.PrNumber == prNumber);
+
+        if (existingSession != null)
+        {
+            return Ok(ApiResponse<AiReviewSession>.SuccessResponse(existingSession, "Returned existing AI Code Review from database."));
+        }
+
+        // 2. Fetch the diff and basic details from GitHub directly
+        var diff = await _gitHubService.GetPullRequestDiffAsync(token, owner, repo, prNumber);
+        if (string.IsNullOrEmpty(diff))
+        {
+            return BadRequest(ApiResponse<AiReviewSession>.FailureResponse("Failed to fetch PR diff from GitHub, or diff is empty.", 400));
+        }
+
+        var prDetails = await _gitHubService.GetPullRequestStatsAsync(token, owner, repo, prNumber);
+
+        // 3. Call Gemini AI Service
+        var analysisDto = await _geminiService.AnalyzeDiffAsync(diff, prDetails.Title, prDetails.Description);
+
+        if (analysisDto == null || string.IsNullOrEmpty(analysisDto.ExecutiveSummary))
+        {
+            return StatusCode(500, ApiResponse<AiReviewSession>.FailureResponse("Failed to generate AI review.", 500));
+        }
+
+        // 4. Map DTO to Domain Entities
+        var session = new AiReviewSession
+        {
+            Owner = owner,
+            Repo = repo,
+            PrNumber = prNumber,
+            ExecutiveSummary = analysisDto.ExecutiveSummary,
+            OverallConfidenceScore = analysisDto.OverallConfidenceScore,
+            FinalSuggestionsCount = analysisDto.FinalSuggestionsCount,
+            SecurityIssuesCount = analysisDto.SecurityIssuesCount,
+            SyntaxErrorsCount = analysisDto.SyntaxErrorsCount,
+            BreachesCount = analysisDto.BreachesCount,
+            PerformanceIssuesCount = analysisDto.PerformanceIssuesCount,
+            CodeSmellsCount = analysisDto.CodeSmellsCount,
+            TestCoverageImpact = analysisDto.TestCoverageImpact,
+            CodeComplexity = analysisDto.CodeComplexity,
+            Issues = analysisDto.Issues.Select(i => new AiReviewIssue
+            {
+                FilePath = i.FilePath,
+                StartLine = i.StartLine,
+                EndLine = i.EndLine,
+                Comment = i.Comment,
+                IssueType = i.IssueType,
+                Severity = i.Severity,
+                SuggestedRemovedCode = i.SuggestedRemovedCode,
+                SuggestedAddedCode = i.SuggestedAddedCode
+            }).ToList()
+        };
+
+        _context.AiReviewSessions.Add(session);
+        await _context.SaveChangesAsync();
+
+        return Ok(ApiResponse<AiReviewSession>.SuccessResponse(session, "AI Code Review completed successfully."));
     }
 
     [HttpPost("merge")]

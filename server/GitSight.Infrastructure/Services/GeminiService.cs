@@ -7,7 +7,7 @@ using Microsoft.Extensions.Configuration;
 
 namespace GitSight.Infrastructure.Services;
 
-public class GeminiService : IGeminiService
+public class GeminiService : IAiReviewService
 {
     private readonly HttpClient _httpClient;
     private readonly GeminiSettings _settings;
@@ -18,7 +18,7 @@ public class GeminiService : IGeminiService
         _settings = config.GetSection("GeminiSettings").Get<GeminiSettings>() ?? new GeminiSettings
         {
             ApiKey = config["Gemini:ApiKey"] ?? string.Empty,
-            Model = config["Gemini:Model"] ?? "gemini-2.5-flash"
+            Model = config["Gemini:Model"] ?? "gemini-3.8-flash"
         };
     }
 
@@ -26,37 +26,10 @@ public class GeminiService : IGeminiService
     {
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
-            return new GeminiReviewResultDto
-            {
-                Summary = "Gemini API key is not configured. Please set GeminiSettings:ApiKey in appsettings.json.",
-                RiskLevel = "UNKNOWN"
-            };
+            throw new InvalidOperationException("Gemini API key is not configured. Please set GeminiSettings:ApiKey in appsettings.json.");
         }
 
-        var systemPrompt = """
-        You are GitSight, an elite Staff Software Engineer and automated GitHub PR code review agent.
-        Your task is to analyze the provided git unified diff for bugs, logic errors, security vulnerabilities, performance bottlenecks, and architectural code smells.
-
-        CRITICAL OUTPUT REQUIREMENTS:
-        Respond ONLY with a valid, raw JSON object (no markdown code blocks, no backticks, no explanations outside the JSON).
-        The JSON must strictly conform to this schema:
-        {
-          "summary": "Concise 2-3 sentence overview of what this PR changes and its quality.",
-          "riskLevel": "LOW" | "MEDIUM" | "HIGH",
-          "keyFindings": [ "Bullet point finding 1", "Bullet point finding 2" ],
-          "inlineComments": [
-            {
-              "path": "path/to/file.ext",
-              "line": 15,
-              "side": "RIGHT",
-              "severity": "Info" | "Warning" | "Critical",
-              "comment": "Specific, actionable feedback pointing out the exact issue.",
-              "suggestedCode": "Optional replacement code snippet or null"
-            }
-          ]
-        }
-        For 'line', specify the NEW line number on the 'RIGHT' side of the diff. Do not invent line numbers.
-        """;
+        var systemPrompt = GeminiPrompts.SystemPrompt;
 
         var userMessage = $"""
         PULL REQUEST TITLE: {prTitle}
@@ -85,21 +58,42 @@ public class GeminiService : IGeminiService
             }
         };
 
-        var model = string.IsNullOrEmpty(_settings.Model) ? "gemini-2.5-flash" : _settings.Model;
+        var model = string.IsNullOrEmpty(_settings.Model) ? "gemini-3.8-flash" : _settings.Model;
         var url = $"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={_settings.ApiKey}";
 
-        using var request = new HttpRequestMessage(HttpMethod.Post, url);
-        request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-
-        var response = await _httpClient.SendAsync(request);
-        if (!response.IsSuccessStatusCode)
+        HttpResponseMessage response = null;
+        int maxRetries = 3;
+        
+        for (int i = 0; i < maxRetries; i++)
         {
-            var err = await response.Content.ReadAsStringAsync();
-            return new GeminiReviewResultDto
+            using var request = new HttpRequestMessage(HttpMethod.Post, url);
+            request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            response = await _httpClient.SendAsync(request);
+            
+            if (response.IsSuccessStatusCode)
             {
-                Summary = $"Failed to analyze diff with Gemini API: {response.StatusCode} - {err}",
-                RiskLevel = "ERROR"
-            };
+                break; // Success! Exit the retry loop.
+            }
+            
+            // If it's a 429 (Too Many Requests) or a 500+ (Traffic/Service Unavailable), wait and retry
+            if ((int)response.StatusCode == 429 || (int)response.StatusCode >= 500)
+            {
+                if (i == maxRetries - 1)
+                {
+                    var err = await response.Content.ReadAsStringAsync();
+                    throw new HttpRequestException($"Gemini API overloaded. Failed after {maxRetries} retries: {response.StatusCode} - {err}");
+                }
+                
+                // Exponential backoff: Wait 2s, then 4s, then 8s
+                await Task.Delay(TimeSpan.FromSeconds(Math.Pow(2, i + 1)));
+            }
+            else
+            {
+                // Unrecoverable error (like 400 Bad Request, 401 Unauthorized)
+                var err = await response.Content.ReadAsStringAsync();
+                throw new HttpRequestException($"Failed to analyze diff with Gemini API: {response.StatusCode} - {err}");
+            }
         }
 
         var json = await response.Content.ReadAsStringAsync();
@@ -114,7 +108,7 @@ public class GeminiService : IGeminiService
 
         if (string.IsNullOrWhiteSpace(text))
         {
-            return new GeminiReviewResultDto { Summary = "Empty response received from Gemini.", RiskLevel = "UNKNOWN" };
+            throw new InvalidOperationException("Empty response received from Gemini.");
         }
 
         // Clean any accidental markdown backticks
@@ -129,6 +123,6 @@ public class GeminiService : IGeminiService
             PropertyNameCaseInsensitive = true
         });
 
-        return result ?? new GeminiReviewResultDto { Summary = "Failed to deserialize Gemini output.", RiskLevel = "ERROR" };
+        return result ?? throw new InvalidOperationException("Failed to deserialize Gemini output.");
     }
 }

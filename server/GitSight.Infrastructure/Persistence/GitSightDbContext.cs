@@ -14,6 +14,8 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
     public DbSet<Repository> Repositories => Set<Repository>();
     public DbSet<PullRequest> PullRequests => Set<PullRequest>();
     public DbSet<ReviewComment> ReviewComments => Set<ReviewComment>();
+    public DbSet<AiReviewSession> AiReviewSessions => Set<AiReviewSession>();
+    public DbSet<AiReviewIssue> AiReviewIssues => Set<AiReviewIssue>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -69,6 +71,27 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
             entity.Property(c => c.FilePath).IsRequired().HasMaxLength(500);
             entity.Property(c => c.Side).HasMaxLength(10);
             entity.Property(c => c.Comment).IsRequired();
+        });
+
+        // AiReviewSession Configuration
+        modelBuilder.Entity<AiReviewSession>(entity =>
+        {
+            entity.HasKey(s => s.Id);
+            
+            // One-to-Many with Issues
+            entity.HasMany(s => s.Issues)
+                  .WithOne(i => i.Session)
+                  .HasForeignKey(i => i.AiReviewSessionId)
+                  .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        // AiReviewIssue Configuration
+        modelBuilder.Entity<AiReviewIssue>(entity =>
+        {
+            entity.HasKey(i => i.Id);
+            entity.Property(i => i.FilePath).IsRequired().HasMaxLength(500);
+            entity.Property(i => i.IssueType).HasMaxLength(100);
+            entity.Property(i => i.Severity).HasMaxLength(50);
         });
     }
 }

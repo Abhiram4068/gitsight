@@ -14,13 +14,13 @@ public class WebhooksController : ControllerBase
 {
     private readonly IApplicationDbContext _context;
     private readonly IGitHubService _gitHubService;
-    private readonly IGeminiService _geminiService;
+    private readonly IAiReviewService _geminiService;
     private readonly ILogger<WebhooksController> _logger;
 
     public WebhooksController(
         IApplicationDbContext context,
         IGitHubService gitHubService,
-        IGeminiService geminiService,
+        IAiReviewService geminiService,
         ILogger<WebhooksController> logger)
     {
         _context = context;
@@ -98,8 +98,8 @@ public class WebhooksController : ControllerBase
                 BaseBranch = baseBranch,
                 HeadBranch = headBranch,
                 DiffContent = diff,
-                AiSummary = aiResult.Summary,
-                RiskLevel = aiResult.RiskLevel,
+                AiSummary = aiResult.ExecutiveSummary,
+                RiskLevel = aiResult.OverallConfidenceScore > 0.8m ? "LOW" : "HIGH",
                 RepositoryId = repo.Id
             };
             _context.PullRequests.Add(pr);
@@ -110,8 +110,8 @@ public class WebhooksController : ControllerBase
             pr.Description = prBody;
             pr.HeadSha = headSha;
             pr.DiffContent = diff;
-            pr.AiSummary = aiResult.Summary;
-            pr.RiskLevel = aiResult.RiskLevel;
+            pr.AiSummary = aiResult.ExecutiveSummary;
+            pr.RiskLevel = aiResult.OverallConfidenceScore > 0.8m ? "LOW" : "HIGH";
             pr.UpdatedAt = DateTime.UtcNow;
 
             // Clear previous draft comments
@@ -119,15 +119,15 @@ public class WebhooksController : ControllerBase
         }
 
         // 4. Add AI suggestions
-        foreach (var comment in aiResult.InlineComments)
+        foreach (var comment in aiResult.Issues)
         {
             pr.Comments.Add(new ReviewComment
             {
-                FilePath = comment.Path,
-                LineNumber = comment.Line,
-                Side = comment.Side ?? "RIGHT",
+                FilePath = comment.FilePath,
+                LineNumber = comment.StartLine,
+                Side = "RIGHT",
                 Comment = comment.Comment,
-                SuggestedCode = comment.SuggestedCode,
+                SuggestedCode = comment.SuggestedAddedCode,
                 Severity = Enum.TryParse<ReviewSeverity>(comment.Severity, true, out var sev) ? sev : ReviewSeverity.Info,
                 IsAiGenerated = true,
                 IsPostedToGitHub = false
@@ -140,8 +140,8 @@ public class WebhooksController : ControllerBase
         {
             prId = pr.Id,
             prNumber,
-            summary = aiResult.Summary,
-            commentsGenerated = aiResult.InlineComments.Count
+            summary = aiResult.ExecutiveSummary,
+            commentsGenerated = aiResult.Issues.Count
         }, "PR successfully reviewed by GitSight Agent."));
     }
 }
