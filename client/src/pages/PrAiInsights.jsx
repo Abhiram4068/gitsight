@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { generateExcelReport, generateTxtReport, generatePdfReport } from "../utils/exportUtils";
 
 const DashboardCards = ({ insights }) => (
   <div className="flex flex-wrap items-center justify-center text-center gap-x-10 gap-y-4 pb-2">
@@ -67,10 +68,11 @@ const DashboardCards = ({ insights }) => (
   </div>
 );
 
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams, useOutletContext } from "react-router-dom";
 import { pullRequestsApi } from "../api/pullRequests";
 
 export default function PrAiInsights() {
+  const { setInsights: setGlobalInsights } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
   const [loadingPhrase] = useState(() => {
     const phrases = ["Analyzing...", "Processing...", "Working...", "Inspecting...", "Reviewing..."];
@@ -79,6 +81,7 @@ export default function PrAiInsights() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [insights, setInsights] = useState(null);
   const [activeModal, setActiveModal] = useState(null);
+  const hasFetched = useRef(false);
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
@@ -111,6 +114,7 @@ export default function PrAiInsights() {
         prNumber: prNumberParam,
       });
       setInsights(data);
+      setGlobalInsights(data);
       setIsLoading(false);
     } catch (error) {
       if (error.response?.status === 404) {
@@ -134,6 +138,7 @@ export default function PrAiInsights() {
         prNumber: prNumberParam,
       });
       setInsights(data);
+      setGlobalInsights(data);
     } catch (error) {
       console.error("Failed to generate PR insights:", error);
     } finally {
@@ -142,6 +147,9 @@ export default function PrAiInsights() {
   };
 
   useEffect(() => {
+    if (!repoParam || !prNumberParam) return;
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     fetchInsights();
   }, [repoParam, prNumberParam]);
 
@@ -175,7 +183,7 @@ export default function PrAiInsights() {
       {/* Page Title */}
       <div className="pb-2">
         <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-          AI Code Review Analysis
+          Overview
         </h1>
       </div>
 
@@ -255,18 +263,22 @@ export default function PrAiInsights() {
 
                 {/* Comment Thread */}
                 <div className="p-4 space-y-3">
-                  <div className="flex items-center space-x-2 text-xs">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-gray-900">
                       {thread.author || "GitSight"}
                     </span>
-                    <span className="text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">
-                      {thread.issueType}
-                    </span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${thread.severity?.toLowerCase() === "high" || thread.severity?.toLowerCase() === "critical" ? "bg-red-100 text-red-700" : thread.severity?.toLowerCase() === "medium" || thread.severity?.toLowerCase() === "warning" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"}`}
-                    >
-                      {thread.severity}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-500">Type:</span>
+                      <span className="text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">
+                        {thread.issueType}
+                      </span>
+                      <span className="text-gray-500 ml-1">Severity:</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${thread.severity?.toLowerCase() === "high" || thread.severity?.toLowerCase() === "critical" ? " text-red-700" : thread.severity?.toLowerCase() === "medium" || thread.severity?.toLowerCase() === "warning" ? "text-amber-700" : " text-gray-700"}`}
+                      >
+                        {thread.severity}
+                      </span>
+                    </div>
                   </div>
 
                   <p className="text-xs text-gray-700 leading-relaxed">
@@ -324,20 +336,49 @@ export default function PrAiInsights() {
             <p className="text-sm text-gray-600 mb-6">
               {modalConfig[activeModal].message}
             </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setActiveModal(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setActiveModal(null)}
-                className={`px-4 py-2 text-sm font-medium text-white rounded transition-colors cursor-pointer ${modalConfig[activeModal].confirmColor}`}
-              >
-                {modalConfig[activeModal].confirmText}
-              </button>
-            </div>
+            {activeModal === "export" ? (
+              <div className="flex flex-col space-y-3">
+                <button
+                  onClick={() => { generateTxtReport(insights, prNumberParam); setActiveModal(null); }}
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded transition-colors text-center cursor-pointer shadow-sm"
+                >
+                  <i className="fa-regular fa-file-lines mr-2"></i> Download as TXT
+                </button>
+                <button
+                  onClick={() => { generateExcelReport(insights, prNumberParam); setActiveModal(null); }}
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition-colors text-center cursor-pointer shadow-sm"
+                >
+                  <i className="fa-regular fa-file-excel mr-2"></i> Download as Excel
+                </button>
+                <button
+                  onClick={() => { generatePdfReport(insights, prNumberParam); setActiveModal(null); }}
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded transition-colors text-center cursor-pointer shadow-sm"
+                >
+                  <i className="fa-regular fa-file-pdf mr-2"></i> Download as PDF
+                </button>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 mt-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors text-center cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className={`px-4 py-2 text-sm font-medium text-white rounded transition-colors cursor-pointer ${modalConfig[activeModal].confirmColor}`}
+                >
+                  {modalConfig[activeModal].confirmText}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

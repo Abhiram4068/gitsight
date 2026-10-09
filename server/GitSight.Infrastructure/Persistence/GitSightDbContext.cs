@@ -16,6 +16,7 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
     public DbSet<ReviewComment> ReviewComments => Set<ReviewComment>();
     public DbSet<AiReviewSession> AiReviewSessions => Set<AiReviewSession>();
     public DbSet<AiReviewIssue> AiReviewIssues => Set<AiReviewIssue>();
+    public DbSet<PrInsight> PrInsights => Set<PrInsight>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -57,11 +58,6 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
             entity.HasIndex(pr => new { pr.RepositoryId, pr.PrNumber }).IsUnique();
             entity.Property(pr => pr.Title).IsRequired().HasMaxLength(500);
             entity.Property(pr => pr.HeadSha).HasMaxLength(100);
-
-            entity.HasMany(pr => pr.Comments)
-                  .WithOne(c => c.PullRequest)
-                  .HasForeignKey(c => c.PullRequestId)
-                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // ReviewComment Configuration
@@ -71,12 +67,19 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
             entity.Property(c => c.FilePath).IsRequired().HasMaxLength(500);
             entity.Property(c => c.Side).HasMaxLength(10);
             entity.Property(c => c.Comment).IsRequired();
+
+            entity.HasOne(c => c.PrInsight)
+                  .WithMany(p => p.Comments)
+                  .HasForeignKey(c => c.PrInsightId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
 
         // AiReviewSession Configuration
         modelBuilder.Entity<AiReviewSession>(entity =>
         {
             entity.HasKey(s => s.Id);
+            entity.Property(s => s.OverallConfidenceScore).HasColumnType("decimal(18,2)");
+            entity.Property(s => s.TestCoverageImpact).HasColumnType("decimal(18,2)");
             
             // One-to-Many with Issues
             entity.HasMany(s => s.Issues)
@@ -92,6 +95,16 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
             entity.Property(i => i.FilePath).IsRequired().HasMaxLength(500);
             entity.Property(i => i.IssueType).HasMaxLength(100);
             entity.Property(i => i.Severity).HasMaxLength(50);
+        });
+
+        // PrInsight Configuration
+        modelBuilder.Entity<PrInsight>(entity =>
+        {
+            entity.HasKey(p => p.Id);
+            entity.HasIndex(p => new { p.RepositoryFullName, p.PrNumber }).IsUnique();
+            entity.Property(p => p.RepositoryFullName).IsRequired().HasMaxLength(400);
+            entity.Property(p => p.Status).HasConversion<string>();
+            entity.Property(p => p.Priority).HasConversion<string>();
         });
     }
 }

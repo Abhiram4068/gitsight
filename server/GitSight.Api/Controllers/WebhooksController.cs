@@ -82,46 +82,39 @@ public class WebhooksController : ControllerBase
         // 2. Analyze diff using Gemini
         var aiResult = await _geminiService.AnalyzeDiffAsync(diff, prTitle, prBody);
 
-        // 3. Save or update PR entity
-        var pr = await _context.PullRequests
+        // 3. Save or update PrInsight
+        var fullRepoName = $"{owner}/{repoName}";
+        var insight = await _context.PrInsights
             .Include(p => p.Comments)
-            .FirstOrDefaultAsync(p => p.RepositoryId == repo.Id && p.PrNumber == prNumber);
+            .FirstOrDefaultAsync(p => p.RepositoryFullName == fullRepoName && p.PrNumber == prNumber);
 
-        if (pr is null)
+        if (insight is null)
         {
-            pr = new PullRequest
+            insight = new PrInsight
             {
+                RepositoryFullName = fullRepoName,
                 PrNumber = prNumber,
-                Title = prTitle,
-                Description = prBody,
-                HeadSha = headSha,
-                BaseBranch = baseBranch,
-                HeadBranch = headBranch,
-                DiffContent = diff,
                 AiSummary = aiResult.ExecutiveSummary,
-                RiskLevel = aiResult.OverallConfidenceScore > 0.8m ? "LOW" : "HIGH",
-                RepositoryId = repo.Id
+                RiskLevel = aiResult.OverallConfidenceScore > 0.8m ? "Low" : "High",
+                Status = PrInsightStatus.Analyzed
             };
-            _context.PullRequests.Add(pr);
+            _context.PrInsights.Add(insight);
         }
         else
         {
-            pr.Title = prTitle;
-            pr.Description = prBody;
-            pr.HeadSha = headSha;
-            pr.DiffContent = diff;
-            pr.AiSummary = aiResult.ExecutiveSummary;
-            pr.RiskLevel = aiResult.OverallConfidenceScore > 0.8m ? "LOW" : "HIGH";
-            pr.UpdatedAt = DateTime.UtcNow;
+            insight.AiSummary = aiResult.ExecutiveSummary;
+            insight.RiskLevel = aiResult.OverallConfidenceScore > 0.8m ? "Low" : "High";
+            insight.UpdatedAt = DateTime.UtcNow;
+            insight.Status = PrInsightStatus.Analyzed;
 
             // Clear previous draft comments
-            _context.ReviewComments.RemoveRange(pr.Comments.Where(c => !c.IsPostedToGitHub));
+            _context.ReviewComments.RemoveRange(insight.Comments.Where(c => !c.IsPostedToGitHub));
         }
 
         // 4. Add AI suggestions
         foreach (var comment in aiResult.Issues)
         {
-            pr.Comments.Add(new ReviewComment
+            insight.Comments.Add(new ReviewComment
             {
                 FilePath = comment.FilePath,
                 LineNumber = comment.StartLine,
@@ -133,12 +126,42 @@ public class WebhooksController : ControllerBase
                 IsPostedToGitHub = false
             });
         }
+        
+        // Save AiReviewSession to track detailed analytics
+        var session = new AiReviewSession
+        {
+            Owner = owner,
+            Repo = repoName,
+            PrNumber = prNumber,
+            ExecutiveSummary = aiResult.ExecutiveSummary,
+            OverallConfidenceScore = aiResult.OverallConfidenceScore,
+            FinalSuggestionsCount = aiResult.FinalSuggestionsCount,
+            SecurityIssuesCount = aiResult.SecurityIssuesCount,
+            SyntaxErrorsCount = aiResult.SyntaxErrorsCount,
+            BreachesCount = aiResult.BreachesCount,
+            PerformanceIssuesCount = aiResult.PerformanceIssuesCount,
+            CodeSmellsCount = aiResult.CodeSmellsCount,
+            TestCoverageImpact = aiResult.TestCoverageImpact,
+            CodeComplexity = aiResult.CodeComplexity,
+            Issues = aiResult.Issues.Select(i => new AiReviewIssue
+            {
+                FilePath = i.FilePath,
+                StartLine = i.StartLine,
+                EndLine = i.EndLine,
+                Comment = i.Comment,
+                IssueType = i.IssueType,
+                Severity = i.Severity,
+                SuggestedRemovedCode = i.SuggestedRemovedCode,
+                SuggestedAddedCode = i.SuggestedAddedCode
+            }).ToList()
+        };
+        _context.AiReviewSessions.Add(session);
 
         await _context.SaveChangesAsync();
 
         return Ok(ApiResponse<object>.SuccessResponse(new
         {
-            prId = pr.Id,
+            prInsightId = insight.Id,
             prNumber,
             summary = aiResult.ExecutiveSummary,
             commentsGenerated = aiResult.Issues.Count

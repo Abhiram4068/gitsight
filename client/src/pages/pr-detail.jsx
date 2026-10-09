@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { pullRequestsApi } from '../api/pullRequests';
+import StatusBadge from '../components/StatusBadge';
 import PrDetailRightSidebar from '../components/PrDetailRightSidebar';
 
 export default function PrDetail() {
@@ -136,19 +137,23 @@ export default function PrDetail() {
 
   return (
     <div className="bg-white text-gray-900 h-screen overflow-hidden flex flex-col">
+      {/* Top utility bar */}
+      <div className="px-6 py-2 border-b border-gray-100 flex items-center justify-between bg-gray-100">
+        <button
+          onClick={() => navigate(-1)}
+          className="inline-flex items-center text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer"
+        >
+          &larr; Back to PRs
+        </button>
+      </div>
+
       {/* Unified PR Header & Info Section */}
       <div className="px-6 py-4 border-b border-gray-200 bg-white shrink-0">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center space-x-3">
-            <button
-              onClick={() => navigate(-1)}
-              className="text-xs hover:text-gray-600 font-medium flex items-center space-x-1 text-gray-700 cursor-pointer transition-colors"
-            >
-              <span>&larr; Back to PRs</span>
-            </button>
             <h1 className="text-xl font-bold text-gray-900">{stats.title}</h1>
             <span className="text-gray-500 text-xl font-light">#{stats.prNumber}</span>
-            <span className="px-3 py-1 font-medium rounded-full text-xs bg-emerald-600 text-white shadow-xs">{stats.state}</span>
+            <StatusBadge state={stats.state} mergedAt={stats.mergedAt} isDraft={stats.isDraft} />
             <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
             {stats.repositoryFullName}
             </span>

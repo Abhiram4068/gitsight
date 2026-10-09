@@ -4,6 +4,7 @@ using GitSight.Application.Common.Interfaces;
 using GitSight.Application.Configurations;
 using GitSight.Application.DTOs;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace GitSight.Infrastructure.Services;
 
@@ -11,8 +12,9 @@ public class GeminiService : IAiReviewService
 {
     private readonly HttpClient _httpClient;
     private readonly GeminiSettings _settings;
+    private readonly ILogger<GeminiService> _logger;
 
-    public GeminiService(HttpClient httpClient, IConfiguration config)
+    public GeminiService(HttpClient httpClient, IConfiguration config, ILogger<GeminiService> logger)
     {
         _httpClient = httpClient;
         _settings = config.GetSection("GeminiSettings").Get<GeminiSettings>() ?? new GeminiSettings
@@ -20,6 +22,7 @@ public class GeminiService : IAiReviewService
             ApiKey = config["Gemini:ApiKey"] ?? string.Empty,
             Model = config["Gemini:Model"] ?? "gemini-3.8-flash"
         };
+        _logger = logger;
     }
 
     // Maximum allowed character length for each diff chunk block.
@@ -27,9 +30,12 @@ public class GeminiService : IAiReviewService
 
     public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null)
     {
+        _logger.LogInformation("Starting AI Diff analysis. PR Title: {PrTitle}, Diff length: {DiffLength}", prTitle, diffText.Length);
+        
         // Ensure that the Gemini API key is properly configured.
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
+            _logger.LogError("Gemini API key is not configured.");
             // Throw an exception if the API key is missing.
             throw new InvalidOperationException("Gemini API key is not configured. Please set GeminiSettings:ApiKey in appsettings.json.");
         }
@@ -119,6 +125,8 @@ public class GeminiService : IAiReviewService
 
         // Set the master executive summary from the accumulated string builder.
         masterResult.ExecutiveSummary = summaries.ToString();
+
+        _logger.LogInformation("Completed AI Diff analysis. Extracted {TotalIssues} total issues across {ChunkCount} chunks.", masterResult.Issues.Count, chunks.Count);
 
         // Return the final aggregated review result to the caller.
         return masterResult;

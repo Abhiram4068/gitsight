@@ -5,8 +5,8 @@ namespace GitSight.Domain.Entities;
 public class ReviewComment
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid PullRequestId { get; set; }
-    public PullRequest PullRequest { get; set; } = null!;
+    public Guid PrInsightId { get; set; }
+    public PrInsight PrInsight { get; set; } = null!;
     public string FilePath { get; set; } = string.Empty;
     public int LineNumber { get; set; }
     public string Side { get; set; } = "RIGHT";
