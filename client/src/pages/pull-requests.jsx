@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { pullRequestsApi } from '../api/pullRequests';
 import { repositoriesApi } from '../api/repositories';
 import { formatRelativeTime, formatDateTime } from '../utils/datetimeFormatter';
+import StatusBadge from '../components/StatusBadge';
 
 export default function PullRequests() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -111,7 +112,7 @@ export default function PullRequests() {
   return (
     <div>
       {/* Header section with repo switcher and refresh */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 pb-3 border-b border-gray-200 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-gray-200 gap-3">
         <div>
           <div className="flex items-center space-x-2">
             <Link
@@ -168,7 +169,7 @@ export default function PullRequests() {
       </div>
 
       {/* Controls Bar: Status Filter Tabs & Search Bar */}
-      <div className="mb-4 flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700">
+      <div className="flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
         {/* Status Tabs: All, Open, Merged, Closed */}
         <div className="flex items-center space-x-1 bg-white p-0.5 border border-gray-300 rounded">
           <button
@@ -324,28 +325,9 @@ export default function PullRequests() {
                         </div>
                       </td>
 
-                      {/* Status Badges */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <div className="flex flex-col space-y-1">
-                          {isMerged ? (
-                            <span className="w-[68px] py-0.5 text-[11px] font-semibold text-white bg-purple-600 rounded-full inline-flex items-center justify-center shadow-xs">
-                              Merged
-                            </span>
-                          ) : isOpen ? (
-                            <span className="w-[68px] py-0.5 text-[11px] font-semibold text-white bg-emerald-600 rounded-full inline-flex items-center justify-center shadow-xs">
-                              Open
-                            </span>
-                          ) : (
-                            <span className="w-[68px] py-0.5 text-[11px] font-semibold text-white bg-gray-500 rounded-full inline-flex items-center justify-center shadow-xs">
-                              Closed
-                            </span>
-                          )}
-
-                          {pr.isDraft && (
-                            <span className="w-[68px] py-0.5 text-[10px] font-semibold text-white bg-slate-400 rounded-full inline-flex items-center justify-center shadow-xs">
-                              Draft
-                            </span>
-                          )}
+                          <StatusBadge state={pr.state} mergedAt={pr.mergedAt} isDraft={pr.isDraft} />
                         </div>
                       </td>
 
@@ -363,31 +345,21 @@ export default function PullRequests() {
                       {/* AI Review Metadata */}
                       <td className="py-2.5 px-3 whitespace-nowrap">
                         <div className="flex flex-col space-y-1">
-                          {pr.analysisStatus === 'completed' ? (
-                            <>
-                              <span className="w-[76px] py-0.5 text-[11px] font-semibold text-white bg-emerald-600 rounded-full inline-flex items-center justify-center shadow-xs">
-                                Reviewed
-                              </span>
-                              {pr.riskLevel && (
-                                <span
-                                  className={`w-[76px] py-0.5 text-[10px] font-semibold text-white rounded-full inline-flex items-center justify-center shadow-xs ${
-                                    pr.riskLevel.toLowerCase() === 'high'
-                                      ? 'bg-rose-600'
-                                      : pr.riskLevel.toLowerCase() === 'medium'
-                                      ? 'bg-amber-600'
-                                      : 'bg-teal-600'
-                                  }`}
-                                >
-                                  {pr.riskLevel} Risk
-                                </span>
-                              )}
-                            </>
+                          {pr.analysisStatus === 'analyzed' ? (
+                            <span className="w-[76px] py-0.5 text-[11px] font-semibold text-emerald-800 bg-emerald-100 rounded-full inline-flex items-center justify-center border border-emerald-200 shadow-xs">
+                              Analyzed
+                            </span>
                           ) : pr.analysisStatus === 'analyzing' ? (
-                            <span className="w-[76px] py-0.5 text-[11px] font-semibold text-white bg-blue-600 rounded-full inline-flex items-center justify-center shadow-xs">
+                            <span className="w-[76px] py-0.5 text-[11px] font-semibold text-blue-800 bg-blue-100 border border-blue-200 rounded-full inline-flex items-center justify-center shadow-xs">
+                              <div className="w-2 h-2 border-[1.5px] border-blue-400 border-t-blue-800 rounded-full animate-spin mr-1.5"></div>
                               Analyzing
                             </span>
+                          ) : pr.analysisStatus === 'failed' ? (
+                            <span className="w-[76px] py-0.5 text-[11px] font-semibold text-red-800 bg-red-100 border border-red-200 rounded-full inline-flex items-center justify-center shadow-xs">
+                              Failed
+                            </span>
                           ) : (
-                            <span className="w-[76px] py-0.5 text-[11px] font-semibold text-white bg-amber-500 rounded-full inline-flex items-center justify-center shadow-xs">
+                            <span className="w-[76px] py-0.5 text-[11px] font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full inline-flex items-center justify-center shadow-xs">
                               Pending
                             </span>
                           )}

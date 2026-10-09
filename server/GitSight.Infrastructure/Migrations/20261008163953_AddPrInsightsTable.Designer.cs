@@ -4,6 +4,7 @@ using GitSight.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GitSight.Infrastructure.Migrations
 {
     [DbContext(typeof(GitSightDbContext))]
-    partial class GitSightDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261008163953_AddPrInsightsTable")]
+    partial class AddPrInsightsTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -312,7 +315,7 @@ namespace GitSight.Infrastructure.Migrations
                     b.Property<int>("LineNumber")
                         .HasColumnType("int");
 
-                    b.Property<Guid>("PrInsightId")
+                    b.Property<Guid>("PullRequestId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<int>("Severity")
@@ -328,7 +331,7 @@ namespace GitSight.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("PrInsightId");
+                    b.HasIndex("PullRequestId");
 
                     b.ToTable("ReviewComments");
                 });
@@ -409,13 +412,13 @@ namespace GitSight.Infrastructure.Migrations
 
             modelBuilder.Entity("GitSight.Domain.Entities.ReviewComment", b =>
                 {
-                    b.HasOne("GitSight.Domain.Entities.PrInsight", "PrInsight")
+                    b.HasOne("GitSight.Domain.Entities.PullRequest", "PullRequest")
                         .WithMany("Comments")
-                        .HasForeignKey("PrInsightId")
+                        .HasForeignKey("PullRequestId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.Navigation("PrInsight");
+                    b.Navigation("PullRequest");
                 });
 
             modelBuilder.Entity("GitSight.Domain.Entities.AiReviewSession", b =>
@@ -423,7 +426,7 @@ namespace GitSight.Infrastructure.Migrations
                     b.Navigation("Issues");
                 });
 
-            modelBuilder.Entity("GitSight.Domain.Entities.PrInsight", b =>
+            modelBuilder.Entity("GitSight.Domain.Entities.PullRequest", b =>
                 {
                     b.Navigation("Comments");
                 });

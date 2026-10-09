@@ -1,61 +1,74 @@
-import React from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import React from "react";
+import { NavLink, useLocation } from "react-router-dom";
 
 export default function Sidebar() {
   const location = useLocation();
-  const isPullRequests = location.pathname.includes('pull-requests');
+  const isPullRequests = location.pathname.includes("pull-requests");
 
   return (
-    <aside className="w-64 p-4 border-r border-gray-200 space-y-6 bg-gray-100 select-none shrink-0 min-h-[calc(100vh-3.5rem)]">
+    <aside className="w-64 py-4 border-r border-gray-200 space-y-6 bg-gray-100 select-none shrink-0 min-h-[calc(100vh-3.5rem)]">
       {/* Navigation links */}
-      <nav className="space-y-1">
+      <nav className="flex flex-col">
         <NavLink
           to="/"
           end
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+            `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
               isActive
-                ? 'text-blue-600 font-semibold'
-                : 'text-gray-700 hover:bg-gray-200'
+                ? "text-blue-600 bg-blue-50/50 border-r-2 border-blue-600"
+                : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
             }`
           }
         >
-          <i className="fa-solid fa-table-columns text-gray-500"></i> <span>Dashboard</span>
+          <i className="fa-solid fa-table-columns w-4 text-center"></i>{" "}
+          <span>Dashboard</span>
         </NavLink>
 
-          <hr className="border-gray-300" />
-
+        <hr className="border-gray-200" />
         <NavLink
           to="/repositories"
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+            `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
               isActive
-                ? 'text-blue-600 font-semibold'
-                : 'text-gray-700 hover:bg-gray-200'
+                ? "text-blue-600 bg-blue-50/50 border-r-2 border-blue-600"
+                : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
             }`
           }
         >
-          <i className="fa-solid fa-box-archive text-gray-500"></i> <span>Repositories</span>
+          <i className="fa-solid fa-box-archive w-4 text-center"></i>{" "}
+          <span>Repositories</span>
         </NavLink>
 
-        <hr className="border-gray-300" />
-
+        <hr className="border-gray-200" />
         <NavLink
           to="/pull-requests"
           className={({ isActive }) =>
-            `flex items-center space-x-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
+            `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
               isActive
-                ? 'text-blue-600 font-semibold'
-                : 'text-gray-700 hover:bg-gray-200'
+                ? "text-blue-600 bg-blue-50/50 border-r-2 border-blue-600"
+                : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
             }`
           }
         >
-          <i className="fa-solid fa-code-pull-request text-gray-500"></i> <span>Pull Requests</span>
+          <i className="fa-solid fa-code-pull-request w-4 text-center"></i>{" "}
+          <span>Pull Requests</span>
         </NavLink>
-        <hr className="border-gray-300" />
+        <hr className="border-gray-200" />
+        <NavLink
+          to="/issues"
+          className={({ isActive }) =>
+            `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
+              isActive
+                ? "text-blue-600 bg-blue-50/50 border-r-2 border-blue-600"
+                : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+            }`
+          }
+        >
+          <i className="fa-solid fa-circle-exclamation w-4 text-center"></i>{" "}
+          <span>Issues</span>
+        </NavLink>
+        <hr className="border-gray-200" />
       </nav>
-
-      
 
       {/* Filter Repository Widget on Pull Requests */}
       {/* {isPullRequests && (

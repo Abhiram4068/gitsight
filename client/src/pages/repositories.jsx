@@ -111,7 +111,7 @@ export default function Repositories() {
   return (
     <div>
       {/* Header section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 pb-3 border-b border-gray-200 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-gray-200 gap-3">
         <div>
           <div className="flex items-center space-x-2">
             <button
@@ -145,7 +145,7 @@ export default function Repositories() {
       </div>
 
       {/* Controls Bar: Type Filter Tabs & Search Bar */}
-      <div className="mb-4 flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700">
+      <div className="flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
         {/* Type Tabs: All, Public, Private */}
         <div className="flex items-center space-x-1 bg-white p-0.5 border border-gray-300 rounded">
           {['All', 'Public', 'Private'].map((type) => (

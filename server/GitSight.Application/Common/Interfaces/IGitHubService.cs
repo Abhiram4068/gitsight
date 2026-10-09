@@ -10,4 +10,6 @@ public interface IGitHubService
     Task<bool> PostPullRequestReviewAsync(string accessToken, string owner, string repo, int prNumber, string headSha, string body, List<ReviewCommentDto> comments, string reviewEvent = "COMMENT");
     Task<bool> MergePullRequestAsync(string accessToken, string owner, string repo, int prNumber, string mergeStrategy, string? commitTitle = null);
     Task<int> GetOpenPrCountAsync(string accessToken, string owner, string repo);
+    Task<PullRequestDto> GetPullRequestStatsAsync(string accessToken, string owner, string repo, int prNumber);
+    Task<List<PullRequestFileDto>> GetPullRequestFilesAsync(string accessToken, string owner, string repo, int prNumber);
 }

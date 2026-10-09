@@ -27,8 +27,8 @@ public class GitHubService : IGitHubService
     public async Task<List<RepositoryDto>> GetUserRepositoriesAsync(string accessToken)
     {
         var client = CreateClient(accessToken);
-        
-        // Fetch repositories: user owned + collaborator
+
+        // It fetches all repositories where the authorized user is an Owner, Collaborator, or Organization Member.
         var repos = await client.Repository.GetAllForCurrent(new RepositoryRequest
         {
             Affiliation = RepositoryAffiliation.Owner | RepositoryAffiliation.Collaborator | RepositoryAffiliation.OrganizationMember,
@@ -69,6 +69,7 @@ public class GitHubService : IGitHubService
             SortDirection = SortDirection.Descending
         };
 
+        // Fetched the pull requests for that owner and reopository
         var pullRequests = await client.PullRequest.GetAllForRepository(owner, repo, prRequest);
 
         return pullRequests.Select(pr => new PullRequestDto
@@ -192,5 +193,111 @@ public class GitHubService : IGitHubService
             Console.WriteLine($"Error fetching PR count for {owner}/{repo}: {ex.Message}");
             return 0; // Return 0 gracefully rather than crashing the entire list
         }
+    }
+
+    public async Task<PullRequestDto> GetPullRequestStatsAsync(string accessToken, string owner, string repo, int prNumber)
+    {
+        try
+        {
+            var client = CreateClient(accessToken);
+            var pr = await client.PullRequest.Get(owner, repo, prNumber);
+            return new PullRequestDto
+            {
+                PrNumber = pr.Number,
+                Title = pr.Title,
+                State = pr.State.StringValue,
+                IsMerged = pr.Merged,
+                IsDraft = pr.Draft,
+                Author = pr.User.Login,
+                AuthorAvatarUrl = pr.User.AvatarUrl,
+                HeadBranch = pr.Head.Ref,
+                BaseBranch = pr.Base.Ref,
+                HeadSha = pr.Head.Sha,
+                RepositoryFullName = pr.Base?.Repository?.FullName ?? $"{owner}/{repo}",
+                HtmlUrl = pr.HtmlUrl,
+                Additions = pr.Additions,
+                Deletions = pr.Deletions,
+                ChangedFiles = pr.ChangedFiles,
+                CommitsCount = pr.Commits,
+                CommentsCount = pr.Comments,
+                CreatedAt = pr.CreatedAt.UtcDateTime,
+                UpdatedAt = pr.UpdatedAt.UtcDateTime,
+                ClosedAt = pr.ClosedAt?.UtcDateTime,
+                MergedAt = pr.MergedAt?.UtcDateTime
+            };
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching PR stats for {owner}/{repo}#{prNumber}: {ex.Message}");
+            return new PullRequestDto();
+        }
+    }
+
+    public async Task<List<PullRequestFileDto>> GetPullRequestFilesAsync(string accessToken, string owner, string repo, int prNumber)
+    {
+        try
+        {
+            var client = CreateClient(accessToken);
+            var files = await client.PullRequest.Files(owner, repo, prNumber);
+            
+            return files.Select(f => new PullRequestFileDto
+            {
+                FileName = f.FileName,
+                Status = f.Status,
+                Additions = f.Additions,
+                Deletions = f.Deletions,
+                Changes = f.Changes,
+                Patch = f.Patch ?? string.Empty,
+                DiffLines = ParsePatch(f.Patch ?? string.Empty)
+            }).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error fetching PR files for {owner}/{repo}#{prNumber}: {ex.Message}");
+            return new List<PullRequestFileDto>();
+        }
+    }
+
+    private List<DiffLineDto> ParsePatch(string patch)
+    {
+        var lines = new List<DiffLineDto>();
+        if (string.IsNullOrEmpty(patch)) return lines;
+
+        var patchLines = patch.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        int? leftLine = null;
+        int? rightLine = null;
+
+        foreach (var line in patchLines)
+        {
+            if (line.StartsWith("@@"))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(line, @"@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@");
+                if (match.Success)
+                {
+                    leftLine = int.Parse(match.Groups[1].Value);
+                    rightLine = int.Parse(match.Groups[2].Value);
+                }
+                
+                lines.Add(new DiffLineDto { Type = "chunk", Content = line });
+            }
+            else if (line.StartsWith("+"))
+            {
+                lines.Add(new DiffLineDto { Type = "added", Content = line, LineCompare = rightLine });
+                if (rightLine.HasValue) rightLine++;
+            }
+            else if (line.StartsWith("-"))
+            {
+                lines.Add(new DiffLineDto { Type = "deleted", Content = line, LineBase = leftLine });
+                if (leftLine.HasValue) leftLine++;
+            }
+            else if (!line.StartsWith("\\"))
+            {
+                lines.Add(new DiffLineDto { Type = "normal", Content = line, LineBase = leftLine, LineCompare = rightLine });
+                if (leftLine.HasValue) leftLine++;
+                if (rightLine.HasValue) rightLine++;
+            }
+        }
+
+        return lines;
     }
 }

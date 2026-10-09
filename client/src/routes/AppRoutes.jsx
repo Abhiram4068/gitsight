@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import MainLayout from '../layouts/MainLayout';
+import AiInsightsLayout from '../layouts/AiInsightsLayout';
 
 // Lazy-loaded pages
 const Dashboard = lazy(() => import('../pages/dashboard'));
@@ -8,6 +9,7 @@ const Repositories = lazy(() => import('../pages/repositories'));
 const Login = lazy(() => import('../pages/login'));
 const PullRequests = lazy(() => import('../pages/pull-requests'));
 const PrDetail = lazy(() => import('../pages/pr-detail'));
+const PrAiInsights = lazy(() => import('../pages/PrAiInsights'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px] text-gray-500 text-sm space-x-2">
@@ -20,12 +22,17 @@ export default function AppRoutes() {
   return (
     <Suspense fallback={<PageLoader />}>
       <Routes>
-        {/* Layout wrapped routes */}
+        {/* Main Application Routes */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Dashboard />} />
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/repositories" element={<Repositories />} />
           <Route path="/pull-requests" element={<PullRequests />} />
+        </Route>
+
+        {/* AI Insights Routes */}
+        <Route element={<AiInsightsLayout />}>
+          <Route path="/pr-ai-insights" element={<PrAiInsights />} />
         </Route>
 
         {/* Standalone routes */}
