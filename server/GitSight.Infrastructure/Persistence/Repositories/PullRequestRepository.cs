@@ -56,7 +56,9 @@ public class PullRequestRepository : IPullRequestRepository
         {
             query = query.Include(s => s.Issues);
         }
-        return await query.FirstOrDefaultAsync(s => s.Owner == owner && s.Repo == repo && s.PrNumber == prNumber);
+        return await query
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync(s => s.Owner == owner && s.Repo == repo && s.PrNumber == prNumber);
     }
 
     public Task AddAiReviewSessionAsync(AiReviewSession session)

@@ -26,6 +26,7 @@ public class AiReviewSession
     // Timestamps & State
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public bool IsTracked { get; set; } = false;
+    public bool IsWebhook { get; set; } = false;
 
     // Navigation Property
     public ICollection<AiReviewIssue> Issues { get; set; } = new List<AiReviewIssue>();

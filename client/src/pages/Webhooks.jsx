@@ -29,6 +29,13 @@ export default function Webhooks() {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [showInstructions, setShowInstructions] = useState(false);
+  const [copied, setCopied] = useState(false);
+  
+  const handleCopyUrl = () => {
+    navigator.clipboard.writeText("https://api.gitsight.app/webhooks/github");
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
   
   const pageSize = 10;
   
@@ -102,7 +109,7 @@ export default function Webhooks() {
         >
           <div className="flex items-center space-x-2">
             <i className="fa-solid fa-bolt"></i>
-            <span>How to automate your PRs using GitHub Webhooks</span>
+            <span>How to automate your open PR reviews using GitHub Webhooks.</span>
           </div>
           <i className={`fa-solid fa-chevron-${showInstructions ? 'up' : 'down'}`}></i>
         </button>
@@ -122,10 +129,21 @@ export default function Webhooks() {
                 <li>Navigate to your GitHub Repository and click on <strong>Settings</strong>.</li>
                 <li>Select <strong>Webhooks</strong> from the left sidebar and click the <strong>Add webhook</strong> button.</li>
                 <li>
-                  Set the <span className="font-bold">Payload URL</span> to your GitSight endpoint:
-                  <code className="bg-amber-200/40 border border-amber-300/50 px-1.5 py-0.5 rounded text-[11px] ml-2 select-all text-amber-800">
-                    https://api.gitsight.app/webhooks/github
-                  </code>
+                  <div className="flex items-center flex-wrap gap-2 mt-1">
+                    <span>Set the <span className="font-bold">Payload URL</span> to your GitSight endpoint:</span>
+                    <div className="flex items-center space-x-1">
+                      <code className="bg-amber-200/40 border border-amber-300/50 px-1.5 py-0.5 rounded text-[11px] select-all text-amber-800">
+                        https://api.gitsight.app/webhooks/github
+                      </code>
+                      <button
+                        onClick={handleCopyUrl}
+                        className="p-1 hover:bg-amber-200/60 rounded text-amber-700 transition-colors cursor-pointer"
+                        title="Copy to clipboard"
+                      >
+                        <i className={`fa-solid ${copied ? 'fa-check text-green-600' : 'fa-copy'}`}></i>
+                      </button>
+                    </div>
+                  </div>
                 </li>
                 <li>Set <span className="font-bold">Content type</span> to <strong>application/json</strong>.</li>
                 <li>Under "Which events would you like to trigger this webhook?", select <strong>Let me select individual events</strong>.</li>

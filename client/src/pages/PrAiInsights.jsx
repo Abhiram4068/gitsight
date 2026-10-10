@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { formatDateTime } from "../utils/datetimeFormatter";
 import { generateExcelReport, generateTxtReport, generatePdfReport } from "../utils/exportUtils";
 
 const DashboardCards = ({ insights }) => (
@@ -212,6 +213,8 @@ export default function PrAiInsights() {
 
   return (
     <div className="space-y-6">
+
+
       {/* Page Title */}
       <div className="pb-2">
         <h1 className="text-xl font-bold text-gray-900 tracking-tight">
@@ -227,22 +230,37 @@ export default function PrAiInsights() {
           Inline Code Reviews ({reviewThreads.length})
         </h2>
         <div className="flex items-center space-x-4 text-xs font-medium">
-          <button
-            onClick={() => setActiveModal("export")}
-            className="text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
-          >
-            Export Review
-          </button>
+          {reviewThreads.length > 0 && (
+            <button
+              onClick={() => setActiveModal("export")}
+              className="text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+            >
+              Export Review
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Tree Line Wrapper */}
-      <div className="relative pl-6">
-        {/* Continuous Trunk Line connecting all issues */}
-        <div className="absolute left-[11px] top-3 bottom-6 w-0.5 bg-emerald-500"></div>
+      {reviewThreads.length === 0 ? (
+        <div className=" p-10 text-center flex flex-col items-center justify-center space-y-4">
+          <div className="w-14 h-14 flex items-center justify-center text-emerald-600 ">
+            <i className="fa-solid fa-check text-2xl"></i>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-emerald-900 tracking-tight">0 Potential Issues Found.</h3>
+            <p className="text-sm  mt-1 max-w-md mx-auto leading-relaxed">
+              The AI code review completed successfully and didn't flag any security vulnerabilities, syntax errors, or major code smells. Great job!
+            </p>
+          </div>
+        </div>
+      ) : (
+        /* Tree Line Wrapper */
+        <div className="relative pl-6">
+          {/* Continuous Trunk Line connecting all issues */}
+          <div className="absolute left-[11px] top-3 bottom-6 w-0.5 bg-emerald-500"></div>
 
-        <div className="space-y-10">
-          {reviewThreads.map((thread) => (
+          <div className="space-y-10">
+            {reviewThreads.map((thread) => (
             <div key={thread.id} id={`issue-${thread.id}`} className="relative group">
               {/* Horizontal Branch Line pointing from the main trunk to the card */}
               <div className="absolute -left-[12px] top-5 w-3 h-0.5 bg-emerald-500"></div>
@@ -366,8 +384,9 @@ export default function PrAiInsights() {
               </div>
             </div>
           ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Custom Modal */}
       {activeModal && modalConfig[activeModal] && (

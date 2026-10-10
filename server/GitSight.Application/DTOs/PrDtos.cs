@@ -83,6 +83,7 @@ public class PullRequestDto
     public string AnalysisStatus { get; set; } = "pending"; // "pending", "analyzing", "completed"
     public int AiCommentsCount { get; set; }
     public bool IsTracked { get; set; }
+    public bool IsWebhook { get; set; }
 
     public DateTime CreatedAt { get; set; }
     public DateTime? UpdatedAt { get; set; }

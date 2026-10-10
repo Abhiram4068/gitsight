@@ -143,6 +143,7 @@ public class WebhooksController : ControllerBase
             CodeSmellsCount = aiResult.CodeSmellsCount,
             TestCoverageImpact = aiResult.TestCoverageImpact,
             CodeComplexity = aiResult.CodeComplexity,
+            IsWebhook = true,
             Issues = aiResult.Issues.Select(i => new AiReviewIssue
             {
                 FilePath = i.FilePath,

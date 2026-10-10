@@ -159,6 +159,7 @@ export default function TrackedIssues() {
 
         {/* Right side controls: Custom PR selector and refresh */}
         <div className="flex items-center space-x-2 shrink-0">
+          <label className="text-xs text-gray-500 font-medium whitespace-nowrap">Tracked PR:</label>
           <div className="relative" ref={dropdownRef}>
             <div 
               className="flex items-center justify-between w-[350px] text-xs border border-gray-300 bg-white px-3 py-1.5 text-gray-800 cursor-pointer hover:border-gray-400 rounded-sm"

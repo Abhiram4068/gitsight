@@ -84,22 +84,38 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights }) => {
               </div>
             </div>
             
-            <div className="flex items-center text-xs text-gray-600 space-x-4">
-              <div>
-                <span className="font-semibold text-gray-900">{stats.author}</span>
-                <span> wants to merge </span>
-                <span className="font-mono text-blue-600 bg-blue-50 px-1 rounded">{stats.headBranch}</span>
-                <span> into </span>
-                <span className="font-mono text-blue-600 bg-blue-50 px-1 rounded">{stats.baseBranch}</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center text-xs text-gray-600 space-x-4">
+                <div>
+                  <span className="font-semibold text-gray-900">{stats.author}</span>
+                  <span> wants to merge </span>
+                  <span className="font-mono text-blue-600 bg-blue-50 px-1 rounded">{stats.headBranch}</span>
+                  <span> into </span>
+                  <span className="font-mono text-blue-600 bg-blue-50 px-1 rounded">{stats.baseBranch}</span>
+                </div>
+                <span className="text-gray-300">&bull;</span>
+                <span>Opened: {new Date(stats.createdAt).toLocaleDateString()}</span>
+                <span className="text-gray-300">&bull;</span>
+                <div className="flex items-center space-x-2 font-medium">
+                  <span className="text-gray-900">{stats.changedFiles} Files changed</span>
+                  <span className="text-emerald-600">+{stats.additions}</span>
+                  <span className="text-red-600">-{stats.deletions}</span>
+                </div>
               </div>
-              <span className="text-gray-300">&bull;</span>
-              <span>Opened: {new Date(stats.createdAt).toLocaleDateString()}</span>
-              <span className="text-gray-300">&bull;</span>
-              <div className="flex items-center space-x-2 font-medium">
-                <span className="text-gray-900">{stats.changedFiles} Files changed</span>
-                <span className="text-emerald-600">+{stats.additions}</span>
-                <span className="text-red-600">-{stats.deletions}</span>
-              </div>
+              
+              {insights && (
+                <div className="flex items-center text-xs">
+                  {insights.isWebhook ? (
+                    <div className="text-amber-700 font-medium flex items-center space-x-1.5  px-2.5 py-1 " title="Review triggered automatically by GitHub webhook">
+                      <span>Webhook Triggered on {new Date(insights.createdAt.endsWith('Z') ? insights.createdAt : insights.createdAt + 'Z').toLocaleString()}</span>
+                    </div>
+                  ) : (
+                    <div className="text-gray-600 font-medium flex items-center space-x-1.5  px-2.5 py-1 " title="Review triggered manually from GitSight dashboard">
+                      <span>Manually Triggered on {new Date(insights.createdAt.endsWith('Z') ? insights.createdAt : insights.createdAt + 'Z').toLocaleString()}</span>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         ) : (
@@ -218,7 +234,6 @@ const RightSidebar = () => (
 
     <div>
       <h3 className="text-sm font-bold text-gray-900 mb-3 border-b pb-2 flex items-center space-x-2">
-        <i className="fa-solid fa-list-ul text-blue-500"></i>
         <span>Legend Guide</span>
       </h3>
       <div className="text-xs text-gray-600 space-y-4">
@@ -249,7 +264,6 @@ const RightSidebar = () => (
 
     <div>
       <h3 className="text-sm font-bold text-gray-900 mb-3 border-b pb-2 flex items-center space-x-2">
-        <i className="fa-solid fa-triangle-exclamation text-amber-500"></i>
         <span>Warning</span>
       </h3>
       <div className="text-xs text-gray-500 space-y-2 leading-relaxed">
