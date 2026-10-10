@@ -33,9 +33,9 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 
-// Configure EF Core with SQL Server 2022
+// Configure EF Core with PostgreSQL
 builder.Services.AddDbContext<GitSightDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<GitSightDbContext>());
 
@@ -89,7 +89,11 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClient", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        var frontendUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        // Also allow Vercel URLs or specific domains passed through ENV
+        var allowedOrigins = frontendUrl.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(o => o.Trim()).ToArray();
+        
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
