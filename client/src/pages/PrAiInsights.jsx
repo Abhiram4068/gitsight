@@ -72,7 +72,7 @@ import { useLocation, useSearchParams, useOutletContext } from "react-router-dom
 import { pullRequestsApi } from "../api/pullRequests";
 
 export default function PrAiInsights() {
-  const { setInsights: setGlobalInsights } = useOutletContext();
+  const { setInsights: setGlobalInsights, stats } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
   const [loadingPhrase] = useState(() => {
     const phrases = ["Analyzing...", "Processing...", "Working...", "Inspecting...", "Reviewing..."];
@@ -81,6 +81,7 @@ export default function PrAiInsights() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [insights, setInsights] = useState(null);
   const [activeModal, setActiveModal] = useState(null);
+  const [ignoredIssues, setIgnoredIssues] = useState(new Set());
   const hasFetched = useRef(false);
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -144,6 +145,18 @@ export default function PrAiInsights() {
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const toggleIgnore = (id) => {
+    setIgnoredIssues((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -222,15 +235,30 @@ export default function PrAiInsights() {
               <div className="absolute -left-[12px] top-5 w-3 h-0.5 bg-emerald-500"></div>
 
               {/* Review Card */}
-              <div className="bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm">
+              <div className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-opacity duration-200 ${ignoredIssues.has(thread.id) ? 'opacity-50 grayscale' : ''}`}>
                 {/* Diff Context Header */}
                 <div className="bg-gray-100/70 px-3 py-2 border-b border-gray-200 flex items-center justify-between font-mono text-xs text-gray-600">
                   <span className="font-medium text-gray-900">
                     {thread.filePath}
                   </span>
-                  <span className="text-gray-500">
-                    Lines +{thread.startLine} to +{thread.endLine}
-                  </span>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-gray-500">
+                      Lines +{thread.startLine} to +{thread.endLine}
+                    </span>
+                    {/* Minimalist Ignore Toggle */}
+                    <button 
+                      onClick={() => toggleIgnore(thread.id)}
+                      className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-[11px] font-medium border cursor-pointer transition-all shadow-sm ${
+                        ignoredIssues.has(thread.id)
+                        ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                      title={ignoredIssues.has(thread.id) ? "Restore this issue" : "Ignore this issue"}
+                    >
+                      <i className={`fa-solid ${ignoredIssues.has(thread.id) ? 'fa-arrow-rotate-left' : 'fa-ban text-gray-400'}`}></i>
+                      <span>{ignoredIssues.has(thread.id) ? 'Restore' : 'Ignore'}</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Code Snippet Block */}
