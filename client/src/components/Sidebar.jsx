@@ -55,7 +55,7 @@ export default function Sidebar() {
         </NavLink>
         <hr className="border-gray-200" />
         <NavLink
-          to="/issues"
+          to="/tracked-issues"
           className={({ isActive }) =>
             `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
               isActive
@@ -66,6 +66,20 @@ export default function Sidebar() {
         >
           <i className="fa-solid fa-circle-exclamation w-4 text-center"></i>{" "}
           <span>Issues</span>
+        </NavLink>
+        <hr className="border-gray-200" />
+        <NavLink
+          to="/webhooks"
+          className={({ isActive }) =>
+            `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
+              isActive
+                ? "text-blue-600 bg-blue-50/50 border-r-2 border-blue-600"
+                : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+            }`
+          }
+        >
+          <i className="fa-solid fa-gears w-4 text-center"></i>{" "}
+          <span>Webhooks</span>
         </NavLink>
         <hr className="border-gray-200" />
       </nav>

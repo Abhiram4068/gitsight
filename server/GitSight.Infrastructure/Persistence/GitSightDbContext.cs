@@ -17,6 +17,7 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
     public DbSet<AiReviewSession> AiReviewSessions => Set<AiReviewSession>();
     public DbSet<AiReviewIssue> AiReviewIssues => Set<AiReviewIssue>();
     public DbSet<PrInsight> PrInsights => Set<PrInsight>();
+    public DbSet<TrackedIssue> TrackedIssues => Set<TrackedIssue>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,6 +106,15 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
             entity.Property(p => p.RepositoryFullName).IsRequired().HasMaxLength(400);
             entity.Property(p => p.Status).HasConversion<string>();
             entity.Property(p => p.Priority).HasConversion<string>();
+        });
+
+        // TrackedIssue Configuration
+        modelBuilder.Entity<TrackedIssue>(entity =>
+        {
+            entity.HasKey(t => t.Id);
+            entity.Property(t => t.FilePath).IsRequired().HasMaxLength(500);
+            entity.Property(t => t.IssueType).HasMaxLength(100);
+            entity.Property(t => t.Severity).HasMaxLength(50);
         });
     }
 }

@@ -44,8 +44,8 @@ export default function Login() {
   };
 
   return (
-    <div className="bg-slate-50 text-slate-900 min-h-screen flex items-start justify-center pt-20 sm:pt-28 p-4 font-sans antialiased selection:bg-slate-900 selection:text-white">
-      <div className="bg-white p-8 min-h-[350px] flex flex-col justify-between rounded-xl border border-slate-200/80 shadow-xl shadow-slate-200/50 max-w-sm w-full text-center">
+    <div className="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-4 font-sans antialiased selection:bg-slate-900 selection:text-white">
+      <div className="p-8 flex flex-col items-center justify-center space-y-10 max-w-sm w-full text-center -mt-24">
         <div className="flex flex-col items-center space-y-4">
           {/* Logo & Brand Header */}
           <div className="inline-flex items-center justify-center space-x-2.5 text-slate-900 font-bold text-2xl tracking-tight">
@@ -55,7 +55,7 @@ export default function Login() {
 
           <div>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-              Automated AI code reviews for your GitHub repositories
+              Sign in to unlock AI-powered insights for your repositories.
             </p>
           </div>
         </div>
@@ -75,7 +75,7 @@ export default function Login() {
           <button
             onClick={handleGitHubLogin}
             type="button"
-            className="w-full flex items-center justify-center space-x-2.5 bg-slate-900 hover:bg-black active:scale-[0.99] text-white py-2.5 px-4 rounded-lg font-medium text-sm transition-all duration-150 shadow-md hover:shadow-lg cursor-pointer"
+            className="w-full flex items-center justify-center space-x-2.5 bg-slate-900 hover:bg-black active:scale-[0.99] text-white py-2.5 px-4  font-medium text-sm transition-all duration-150 shadow-md hover:shadow-lg cursor-pointer"
           >
             <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
               <path

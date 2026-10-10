@@ -59,6 +59,61 @@ public class WebhooksController : ControllerBase
         // Process webhook using the dedicated service (looking up user by owner ID)
         await _webhookService.ProcessPullRequestWebhookAsync(ownerId, owner, repoName, prNumber);
 
-        return Ok(ApiResponse<string>.SuccessResponse("PR Webhook processed.", "Webhook handled successfully."));
+        // 4. Add AI suggestions
+        foreach (var comment in aiResult.Issues)
+        {
+            insight.Comments.Add(new ReviewComment
+            {
+                FilePath = comment.FilePath,
+                LineNumber = comment.StartLine,
+                Side = "RIGHT",
+                Comment = comment.Comment,
+                SuggestedCode = comment.SuggestedAddedCode,
+                Severity = Enum.TryParse<ReviewSeverity>(comment.Severity, true, out var sev) ? sev : ReviewSeverity.Info,
+                IsAiGenerated = true,
+                IsPostedToGitHub = false
+            });
+        }
+        
+        // Save AiReviewSession to track detailed analytics
+        var session = new AiReviewSession
+        {
+            Owner = owner,
+            Repo = repoName,
+            PrNumber = prNumber,
+            ExecutiveSummary = aiResult.ExecutiveSummary,
+            OverallConfidenceScore = aiResult.OverallConfidenceScore,
+            FinalSuggestionsCount = aiResult.FinalSuggestionsCount,
+            SecurityIssuesCount = aiResult.SecurityIssuesCount,
+            SyntaxErrorsCount = aiResult.SyntaxErrorsCount,
+            BreachesCount = aiResult.BreachesCount,
+            PerformanceIssuesCount = aiResult.PerformanceIssuesCount,
+            CodeSmellsCount = aiResult.CodeSmellsCount,
+            TestCoverageImpact = aiResult.TestCoverageImpact,
+            CodeComplexity = aiResult.CodeComplexity,
+            IsWebhook = true,
+            Issues = aiResult.Issues.Select(i => new AiReviewIssue
+            {
+                FilePath = i.FilePath,
+                StartLine = i.StartLine,
+                EndLine = i.EndLine,
+                Comment = i.Comment,
+                IssueType = i.IssueType,
+                Severity = i.Severity,
+                SuggestedRemovedCode = i.SuggestedRemovedCode,
+                SuggestedAddedCode = i.SuggestedAddedCode
+            }).ToList()
+        };
+        _context.AiReviewSessions.Add(session);
+
+        await _context.SaveChangesAsync();
+
+        return Ok(ApiResponse<object>.SuccessResponse(new
+        {
+            prInsightId = insight.Id,
+            prNumber,
+            summary = aiResult.ExecutiveSummary,
+            commentsGenerated = aiResult.Issues.Count
+        }, "PR successfully reviewed by GitSight Agent."));
     }
 }
