@@ -50,6 +50,7 @@ builder.Services.AddHttpClient<IAiReviewService, GeminiService>(client =>
 // Register Repositories (Infrastructure)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPullRequestRepository, PullRequestRepository>();
+builder.Services.AddScoped<ITrackedIssueRepository, TrackedIssueRepository>();
 
 
 // Register Application & Infrastructure Services
@@ -58,6 +59,7 @@ builder.Services.AddScoped<IRepositoryService, RepositoryService>();
 builder.Services.AddScoped<IPullRequestService, PullRequestService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<ITrackedIssueService, TrackedIssueService>();
 
 // Register FluentValidation Validators
 builder.Services.AddValidatorsFromAssemblyContaining<MergePrRequestValidator>();

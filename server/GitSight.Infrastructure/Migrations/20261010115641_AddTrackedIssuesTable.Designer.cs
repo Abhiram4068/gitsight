@@ -4,6 +4,7 @@ using GitSight.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GitSight.Infrastructure.Migrations
 {
     [DbContext(typeof(GitSightDbContext))]
-    partial class GitSightDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261010115641_AddTrackedIssuesTable")]
+    partial class AddTrackedIssuesTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -104,9 +107,6 @@ namespace GitSight.Infrastructure.Migrations
 
                     b.Property<int>("FinalSuggestionsCount")
                         .HasColumnType("int");
-
-                    b.Property<bool>("IsTracked")
-                        .HasColumnType("bit");
 
                     b.Property<decimal>("OverallConfidenceScore")
                         .HasColumnType("decimal(18,2)");
@@ -383,17 +383,16 @@ namespace GitSight.Infrastructure.Migrations
                     b.Property<int>("StartLine")
                         .HasColumnType("int");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<string>("SuggestedAddedCode")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("SuggestedRemovedCode")
                         .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("datetime2");
 
                     b.HasKey("Id");
 

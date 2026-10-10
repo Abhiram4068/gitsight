@@ -23,8 +23,9 @@ public class AiReviewSession
     // Summary Text
     public string ExecutiveSummary { get; set; } = string.Empty;
 
-    // Timestamps
+    // Timestamps & State
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public bool IsTracked { get; set; } = false;
 
     // Navigation Property
     public ICollection<AiReviewIssue> Issues { get; set; } = new List<AiReviewIssue>();

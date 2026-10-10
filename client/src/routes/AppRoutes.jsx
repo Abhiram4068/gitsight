@@ -11,6 +11,7 @@ const PullRequests = lazy(() => import('../pages/pull-requests'));
 const PrDetail = lazy(() => import('../pages/pr-detail'));
 const PrAiInsights = lazy(() => import('../pages/PrAiInsights'));
 const Webhooks = lazy(() => import('../pages/Webhooks'));
+const TrackedIssues = lazy(() => import('../pages/TrackedIssues'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px] text-gray-500 text-sm space-x-2">
@@ -30,6 +31,7 @@ export default function AppRoutes() {
           <Route path="/repositories" element={<Repositories />} />
           <Route path="/pull-requests" element={<PullRequests />} />
           <Route path="/webhooks" element={<Webhooks />} />
+          <Route path="/tracked-issues" element={<TrackedIssues />} />
         </Route>
 
         {/* AI Insights Routes */}

@@ -88,6 +88,8 @@ export default function PrAiInsights() {
 
   const repoParam = location.state?.repoParam || searchParams.get("repo");
   const prNumberParam = location.state?.prNumberParam || searchParams.get("pr");
+  const issueIdParam = searchParams.get("issue");
+  const isFromTracked = searchParams.get("from") === "tracked";
 
   const modalConfig = {
     export: {
@@ -96,12 +98,6 @@ export default function PrAiInsights() {
       confirmText: "Export",
       confirmColor: "bg-blue-600 hover:bg-blue-700",
     },
-    critical: {
-      title: "Mark as Critical",
-      message: "Mark this entire review as Critical?",
-      confirmText: "Mark Critical",
-      confirmColor: "bg-red-600 hover:bg-red-700",
-    }
   };
 
   const fetchInsights = async () => {
@@ -166,6 +162,29 @@ export default function PrAiInsights() {
     fetchInsights();
   }, [repoParam, prNumberParam]);
 
+  // Handle scrolling to specific issue
+  useEffect(() => {
+    if (insights && issueIdParam) {
+      // Slight delay to ensure the DOM is painted
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`issue-${issueIdParam}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Flash effect
+          const card = element.querySelector('.bg-white');
+          if (card) {
+            card.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+            setTimeout(() => {
+              card.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+            }, 2000);
+          }
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [insights, issueIdParam]);
+
   if (isLoading) {
     return (
       <div className="h-[60vh] bg-transparent text-gray-700 flex flex-col items-center justify-center font-sans">
@@ -214,12 +233,6 @@ export default function PrAiInsights() {
           >
             Export Review
           </button>
-          <button
-            onClick={() => setActiveModal("critical")}
-            className="text-red-500 hover:text-red-700 transition-colors cursor-pointer"
-          >
-            Mark as Critical
-          </button>
         </div>
       </div>
 
@@ -230,12 +243,12 @@ export default function PrAiInsights() {
 
         <div className="space-y-10">
           {reviewThreads.map((thread) => (
-            <div key={thread.id} className="relative group">
+            <div key={thread.id} id={`issue-${thread.id}`} className="relative group">
               {/* Horizontal Branch Line pointing from the main trunk to the card */}
               <div className="absolute -left-[12px] top-5 w-3 h-0.5 bg-emerald-500"></div>
 
               {/* Review Card */}
-              <div className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-opacity duration-200 ${ignoredIssues.has(thread.id) ? 'opacity-50 grayscale' : ''}`}>
+              <div className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-all duration-500 ${ignoredIssues.has(thread.id) ? 'opacity-50 grayscale' : ''}`}>
                 {/* Diff Context Header */}
                 <div className="bg-gray-100/70 px-3 py-2 border-b border-gray-200 flex items-center justify-between font-mono text-xs text-gray-600">
                   <span className="font-medium text-gray-900">
@@ -246,18 +259,20 @@ export default function PrAiInsights() {
                       Lines +{thread.startLine} to +{thread.endLine}
                     </span>
                     {/* Minimalist Ignore Toggle */}
-                    <button 
-                      onClick={() => toggleIgnore(thread.id)}
-                      className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-[11px] font-medium border cursor-pointer transition-all shadow-sm ${
-                        ignoredIssues.has(thread.id)
-                        ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                      title={ignoredIssues.has(thread.id) ? "Restore this issue" : "Ignore this issue"}
-                    >
-                      <i className={`fa-solid ${ignoredIssues.has(thread.id) ? 'fa-arrow-rotate-left' : 'fa-ban text-gray-400'}`}></i>
-                      <span>{ignoredIssues.has(thread.id) ? 'Restore' : 'Ignore'}</span>
-                    </button>
+                    {!isFromTracked && (
+                      <button 
+                        onClick={() => toggleIgnore(thread.id)}
+                        className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-[11px] font-medium border cursor-pointer transition-all shadow-sm ${
+                          ignoredIssues.has(thread.id)
+                          ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900'
+                        }`}
+                        title={ignoredIssues.has(thread.id) ? "Restore this issue" : "Ignore this issue"}
+                      >
+                        <i className={`fa-solid ${ignoredIssues.has(thread.id) ? 'fa-arrow-rotate-left' : 'fa-ban text-gray-400'}`}></i>
+                        <span>{ignoredIssues.has(thread.id) ? 'Restore' : 'Ignore'}</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 

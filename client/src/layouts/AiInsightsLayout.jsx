@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { Outlet, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { pullRequestsApi } from '../api/pullRequests';
+import { trackedIssuesApi } from '../api/trackedIssues';
 import StatusBadge from '../components/StatusBadge';
 
-const AiNavbar = ({ navigate, location, stats, insights }) => {
+const AiNavbar = ({ navigate, location, stats, insights, setInsights }) => {
   const [searchParams] = useSearchParams();
   const [isReReviewing, setIsReReviewing] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [showUntrackModal, setShowUntrackModal] = useState(false);
   const [isTracking, setIsTracking] = useState(false);
+  const [isUntracking, setIsUntracking] = useState(false);
 
   const handleReReview = async () => {
     const repoParam = location.state?.repoParam || searchParams.get('repo');
@@ -35,7 +38,7 @@ const AiNavbar = ({ navigate, location, stats, insights }) => {
           onClick={() => navigate(-1)}
           className="inline-flex items-center text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer"
         >
-          &larr; Back to Pull Request Details
+          &larr; {searchParams.get('from') === 'tracked' ? 'Back to Tracked Issues' : 'Back to Pull Request Details'}
         </button>
       </div>
       
@@ -53,13 +56,23 @@ const AiNavbar = ({ navigate, location, stats, insights }) => {
                 </span>
               </div>
               <div className="flex items-center space-x-2">
-                <button
-                  onClick={() => setShowConfirmModal(true)}
-                  className="inline-flex items-center space-x-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
-                  title="Sync all active issues to track"
-                >
-                  <span>Track Issues</span>
-                </button>
+                {insights?.isTracked ? (
+                  <button
+                    onClick={() => setShowUntrackModal(true)}
+                    className="inline-flex items-center space-x-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
+                    title="Stop tracking issues for this PR"
+                  >
+                    <span>Untrack Issues</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => setShowConfirmModal(true)}
+                    className="inline-flex items-center space-x-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
+                    title="Sync all active issues to track"
+                  >
+                    <span>Track Issues</span>
+                  </button>
+                )}
                 <button
                   onClick={handleReReview}
                   disabled={isReReviewing}
@@ -113,14 +126,21 @@ const AiNavbar = ({ navigate, location, stats, insights }) => {
                 Cancel
               </button>
               <button 
-                onClick={() => {
-                  setIsTracking(true);
-                  // Simulate network request
-                  setTimeout(() => {
-                    console.log('Confirmed tracking issues...');
-                    setIsTracking(false);
+                onClick={async () => {
+                  if (!insights?.id || !stats?.prNumber) return;
+                  try {
+                    setIsTracking(true);
+                    await trackedIssuesApi.trackIssues({ 
+                      pullRequestNumber: stats.prNumber, 
+                      sessionId: insights.id 
+                    });
+                    setInsights({ ...insights, isTracked: true });
                     setShowConfirmModal(false);
-                  }, 1500);
+                  } catch (err) {
+                    console.error("Failed to track issues", err);
+                  } finally {
+                    setIsTracking(false);
+                  }
                 }}
                 disabled={isTracking}
                 className={`px-5 py-2 text-white text-sm font-bold rounded-none ${
@@ -130,6 +150,56 @@ const AiNavbar = ({ navigate, location, stats, insights }) => {
                 {isTracking ? (
                   <>
                     <i className="fa-solid fa-spinner fa-spin mr-2"></i> Tracking...
+                  </>
+                ) : (
+                  'Confirm'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Untrack Confirm Modal */}
+      {showUntrackModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white p-6 shadow-2xl w-[400px] border border-gray-400 rounded-none">
+            <h2 className="text-base font-bold text-gray-900 mb-3">Untrack Issues</h2>
+            <p className="text-sm text-gray-800 mb-6 leading-relaxed">
+              You are about to stop tracking issues for this pull request. They will be removed from tracked issues. Do you wish to continue?
+            </p>
+            <div className="flex justify-end space-x-4">
+              <button 
+                onClick={() => setShowUntrackModal(false)}
+                className="px-5 py-2 border-2 border-gray-300 text-gray-700 text-sm font-bold hover:bg-gray-100 rounded-none cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={async () => {
+                  if (!insights?.id || !stats?.prNumber) return;
+                  try {
+                    setIsUntracking(true);
+                    await trackedIssuesApi.untrackIssues({ 
+                      pullRequestNumber: stats.prNumber, 
+                      sessionId: insights.id 
+                    });
+                    setInsights({ ...insights, isTracked: false });
+                    setShowUntrackModal(false);
+                  } catch (err) {
+                    console.error("Failed to untrack issues", err);
+                  } finally {
+                    setIsUntracking(false);
+                  }
+                }}
+                disabled={isUntracking}
+                className={`px-5 py-2 text-white text-sm font-bold rounded-none ${
+                  isUntracking ? 'bg-red-400 cursor-wait' : 'bg-red-600 hover:bg-red-700 cursor-pointer'
+                }`}
+              >
+                {isUntracking ? (
+                  <>
+                    <i className="fa-solid fa-spinner fa-spin mr-2"></i> Untracking...
                   </>
                 ) : (
                   'Confirm'
@@ -230,7 +300,7 @@ export default function AiInsightsLayout() {
 
   return (
     <div className="bg-gray-50 text-gray-900 h-screen flex flex-col font-sans overflow-hidden">
-      <AiNavbar navigate={navigate} location={location} stats={stats} insights={insights} />
+      <AiNavbar navigate={navigate} location={location} stats={stats} insights={insights} setInsights={setInsights} />
       <div className="flex flex-1 overflow-hidden">
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto custom-scrollbar">

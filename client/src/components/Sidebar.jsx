@@ -55,7 +55,7 @@ export default function Sidebar() {
         </NavLink>
         <hr className="border-gray-200" />
         <NavLink
-          to="/issues"
+          to="/tracked-issues"
           className={({ isActive }) =>
             `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
               isActive

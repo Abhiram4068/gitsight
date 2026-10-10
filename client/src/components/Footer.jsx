@@ -6,7 +6,7 @@ export default function Footer() {
       <div>
       </div>
       <div>
-        <span>GitSight Review Agent Engine v1.0.0</span>
+        <span>GitSight Review Agent </span>
       </div>
     </footer>
   );
