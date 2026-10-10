@@ -51,6 +51,7 @@ builder.Services.AddHttpClient<IAiReviewService, GeminiService>(client =>
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPullRequestRepository, PullRequestRepository>();
 builder.Services.AddScoped<ITrackedIssueRepository, TrackedIssueRepository>();
+builder.Services.AddScoped<IWebhookRepository, WebhookRepository>();
 
 
 // Register Application & Infrastructure Services
