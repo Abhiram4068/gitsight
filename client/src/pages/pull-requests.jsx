@@ -114,14 +114,21 @@ export default function PullRequests() {
       {/* Header section with repo switcher and refresh */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-gray-200 gap-3">
         <div>
-          <div className="flex items-center space-x-2">
-            <Link
-              to="/repositories"
-              className="text-xs  hover:text-gray-600 font-medium flex items-center space-x-1"
-            >
-              <span>&larr; Repositories</span>
+          <nav className="flex items-center space-x-1.5 text-xs text-gray-500 mb-1">
+            <Link to="/" className="hover:underline hover:text-gray-900 cursor-pointer transition-colors">
+              Dashboard
             </Link>
-          </div>
+            {repoFromUrl && (
+              <>
+                <span className="text-gray-400">&gt;</span>
+                <Link to="/repositories" className="hover:underline hover:text-gray-900 cursor-pointer transition-colors">
+                  Repositories
+                </Link>
+              </>
+            )}
+            <span className="text-gray-400">&gt;</span>
+            <span className="font-bold text-gray-900">Pull Requests</span>
+          </nav>
 
           <h1 className="text-lg font-bold text-gray-900 mt-1 flex items-center space-x-2">
             <span className="font-bold text-blue-700 ">Pull Requests </span>
