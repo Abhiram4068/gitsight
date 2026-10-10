@@ -10,6 +10,11 @@ const axiosClient = axios.create({
   },
   timeout: 30000,
 });
+function doSomething() {
+    const API_KEY_SECRET = "sk-fake-secret-key-12345"; // Hardcoded secret
+    var unusedVariable = 42; // Unused variable
+    eval("console.log('dangerous')"); // Security risk
+}
 
 // Request Interceptor: Attach JWT Bearer token
 axiosClient.interceptors.request.use(
