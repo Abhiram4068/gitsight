@@ -33,7 +33,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 
-// Configure EF Core with PostgreSQL
+// Configure EF Core with SQL Server 2022
 builder.Services.AddDbContext<GitSightDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -57,6 +57,7 @@ builder.Services.AddScoped<ITrackedIssueRepository, TrackedIssueRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRepositoryService, RepositoryService>();
 builder.Services.AddScoped<IPullRequestService, PullRequestService>();
+builder.Services.AddScoped<IWebhookService, WebhookService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITrackedIssueService, TrackedIssueService>();
@@ -85,15 +86,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // CORS for Vite React Client
+var frontendUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClient", policy =>
     {
-        var frontendUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
-        // Also allow Vercel URLs or specific domains passed through ENV
-        var allowedOrigins = frontendUrl.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(o => o.Trim()).ToArray();
-        
-        policy.WithOrigins(allowedOrigins)
+        policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
