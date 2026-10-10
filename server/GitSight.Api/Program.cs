@@ -86,13 +86,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // CORS for Vite React Client
-var frontendUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
-
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClient", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        var frontendUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        var allowedOrigins = frontendUrl.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(o => o.Trim()).ToArray();
+        
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
