@@ -14,6 +14,7 @@ const Webhooks = lazy(() => import('../pages/Webhooks'));
 const TrackedIssues = lazy(() => import('../pages/TrackedIssues'));
 const ReviewRules = lazy(() => import('../pages/ReviewRules'));
 const Analytics = lazy(() => import('../pages/Analytics'));
+const Pipelines = lazy(() => import('../pages/Pipelines'));
 const Notifications = lazy(() => import('../pages/Notifications'));
 const Settings = lazy(() => import('../pages/Settings'));
 const DeleteAccount = lazy(() => import('../pages/DeleteAccount'));
@@ -39,6 +40,7 @@ export default function AppRoutes() {
           <Route path="/tracked-issues" element={<TrackedIssues />} />
           <Route path="/review-rules" element={<ReviewRules />} />
           <Route path="/analytics" element={<Analytics />} />
+          <Route path="/pipelines" element={<Pipelines />} />
           <Route path="/notifications" element={<Notifications />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/delete-account" element={<DeleteAccount />} />

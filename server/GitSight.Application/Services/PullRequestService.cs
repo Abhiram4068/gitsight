@@ -426,4 +426,49 @@ public class PullRequestService : IPullRequestService
 
         return posted;
     }
+
+    public async Task<bool> PostSingleCommentToGitHubAsync(string token, string owner, string repo, int prNumber, PostSingleCommentRequestDto request)
+    {
+        _logger.LogInformation("PostSingleCommentToGitHubAsync invoked for {Owner}/{Repo} PR #{PrNumber}, file: {File}:{Line}",
+            owner, repo, prNumber, request.FilePath, request.Line);
+
+        var posted = await _gitHubService.PostSinglePullRequestCommentAsync(
+            token,
+            owner,
+            repo,
+            prNumber,
+            request.FilePath,
+            request.Line,
+            request.Comment,
+            request.SuggestedCode);
+
+        if (posted)
+        {
+            var session = await _repository.GetAiReviewSessionAsync(owner, repo, prNumber, includeIssues: true);
+            if (session != null)
+            {
+                AiReviewIssue? issue = null;
+                if (request.IssueId.HasValue && request.IssueId.Value != Guid.Empty)
+                {
+                    issue = session.Issues.FirstOrDefault(i => i.Id == request.IssueId.Value);
+                }
+
+                if (issue == null)
+                {
+                    issue = session.Issues.FirstOrDefault(i =>
+                        i.FilePath == request.FilePath &&
+                        (i.StartLine == request.Line || i.EndLine == request.Line));
+                }
+
+                if (issue != null)
+                {
+                    issue.IsCommented = true;
+                    await _repository.SaveChangesAsync();
+                    _logger.LogInformation("Marked issue {IssueId} as commented in database for {Owner}/{Repo} PR #{PrNumber}", issue.Id, owner, repo, prNumber);
+                }
+            }
+        }
+
+        return posted;
+    }
 }

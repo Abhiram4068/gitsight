@@ -196,4 +196,31 @@ public class PullRequestsController : ControllerBase
             return NotFound(ApiResponse<bool>.FailureResponse("Pull request insight not found.", 404));
         }
     }
+
+    [HttpPost("{owner}/{repo}/{prNumber}/post-comment")]
+    public async Task<ActionResult<ApiResponse<bool>>> PostSingleComment(
+        string owner, string repo, int prNumber, [FromBody] PostSingleCommentRequestDto request)
+    {
+        _logger.LogInformation("HTTP POST PostSingleComment initiated for {Owner}/{Repo} PR #{PrNumber}", owner, repo, prNumber);
+        var token = _currentUserService.GitHubAccessToken;
+        if (string.IsNullOrEmpty(token))
+        {
+            return Unauthorized(ApiResponse<bool>.FailureResponse("GitHub token missing.", 401));
+        }
+
+        try
+        {
+            var success = await _pullRequestService.PostSingleCommentToGitHubAsync(token, owner, repo, prNumber, request);
+            if (success)
+            {
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Comment successfully posted to GitHub PR."));
+            }
+            return StatusCode(500, ApiResponse<bool>.FailureResponse("GitHub rejected the comment request.", 500));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to post comment to GitHub for {Owner}/{Repo} PR #{PrNumber}", owner, repo, prNumber);
+            return StatusCode(500, ApiResponse<bool>.FailureResponse($"Failed to post comment: {ex.Message}", 500));
+        }
+    }
 }

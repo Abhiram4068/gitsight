@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { formatDateTime } from "../utils/datetimeFormatter";
-import { generateExcelReport, generateTxtReport, generatePdfReport } from "../utils/exportUtils";
+import {
+  generateExcelReport,
+  generateTxtReport,
+  generatePdfReport,
+} from "../utils/exportUtils";
 
 const DashboardCards = ({ insights }) => (
   <div className="flex flex-wrap items-center justify-center text-center gap-x-10 gap-y-4 pb-2">
@@ -69,20 +73,34 @@ const DashboardCards = ({ insights }) => (
   </div>
 );
 
-import { useLocation, useSearchParams, useOutletContext } from "react-router-dom";
+import {
+  useLocation,
+  useSearchParams,
+  useOutletContext,
+} from "react-router-dom";
 import { pullRequestsApi } from "../api/pullRequests";
 
 export default function PrAiInsights() {
   const { setInsights: setGlobalInsights, stats } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
   const [loadingPhrase] = useState(() => {
-    const phrases = ["Analyzing...", "Processing...", "Working...", "Inspecting...", "Reviewing..."];
+    const phrases = [
+      "Analyzing...",
+      "Processing...",
+      "Working...",
+      "Inspecting...",
+      "Reviewing...",
+    ];
     return phrases[Math.floor(Math.random() * phrases.length)];
   });
   const [isGenerating, setIsGenerating] = useState(false);
   const [insights, setInsights] = useState(null);
   const [activeModal, setActiveModal] = useState(null);
   const [ignoredIssues, setIgnoredIssues] = useState(new Set());
+  const [postingIssueId, setPostingIssueId] = useState(null);
+  const [postedIssues, setPostedIssues] = useState(new Set());
+  const [postErrors, setPostErrors] = useState({});
+  const [toastNotification, setToastNotification] = useState(null);
   const hasFetched = useRef(false);
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -156,12 +174,74 @@ export default function PrAiInsights() {
     });
   };
 
+  const handlePostToGitHub = async (thread) => {
+    if (!repoParam || !prNumberParam) return;
+    const [owner, repo] = repoParam.split("/");
+    const issueId = thread.id;
+
+    setPostingIssueId(issueId);
+    setPostErrors((prev) => {
+      const copy = { ...prev };
+      delete copy[issueId];
+      return copy;
+    });
+
+    try {
+      const suggestedCode = thread.suggestedAddedCode || null;
+      await pullRequestsApi.postCommentToGitHub({
+        owner,
+        repo,
+        prNumber: prNumberParam,
+        issueId,
+        filePath: thread.filePath,
+        line: thread.startLine || thread.endLine || 1,
+        comment: thread.comment,
+        suggestedCode,
+        suggestedRemovedCode: thread.suggestedRemovedCode,
+      });
+
+      thread.isCommented = true;
+      setPostedIssues((prev) => new Set(prev).add(issueId));
+      setToastNotification({
+        type: "success",
+        message: `Comment for ${thread.filePath} (line ${thread.startLine}) successfully posted to GitHub PR #${prNumberParam}!`,
+      });
+      setTimeout(() => setToastNotification(null), 5000);
+    } catch (err) {
+      console.error("Failed to post comment to GitHub:", err);
+      const errMsg =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to post comment to GitHub.";
+      setPostErrors((prev) => ({ ...prev, [issueId]: errMsg }));
+      setToastNotification({
+        type: "error",
+        message: `Failed to post comment for ${thread.filePath}: ${errMsg}`,
+      });
+      setTimeout(() => setToastNotification(null), 5000);
+    } finally {
+      setPostingIssueId(null);
+    }
+  };
+
   useEffect(() => {
     if (!repoParam || !prNumberParam) return;
     if (hasFetched.current) return;
     hasFetched.current = true;
     fetchInsights();
   }, [repoParam, prNumberParam]);
+
+  // Synchronize posted issues from database API response (isCommented flag)
+  useEffect(() => {
+    if (insights?.issues) {
+      const alreadyCommentedIds = new Set(
+        insights.issues
+          .filter((i) => i.isCommented || i.IsCommented)
+          .map((i) => i.id)
+      );
+      setPostedIssues((prev) => new Set([...prev, ...alreadyCommentedIds]));
+    }
+  }, [insights]);
 
   // Handle scrolling to specific issue
   useEffect(() => {
@@ -170,14 +250,14 @@ export default function PrAiInsights() {
       const timer = setTimeout(() => {
         const element = document.getElementById(`issue-${issueIdParam}`);
         if (element) {
-          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+
           // Flash effect
-          const card = element.querySelector('.bg-white');
+          const card = element.querySelector(".bg-white");
           if (card) {
-            card.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+            card.classList.add("ring-2", "ring-blue-500", "ring-offset-2");
             setTimeout(() => {
-              card.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+              card.classList.remove("ring-2", "ring-blue-500", "ring-offset-2");
             }, 2000);
           }
         }
@@ -213,14 +293,40 @@ export default function PrAiInsights() {
 
   return (
     <div className="space-y-6">
-
-
       {/* Page Title */}
       <div className="pb-2">
         <h1 className="text-xl font-bold text-gray-900 tracking-tight">
           Overview
         </h1>
       </div>
+
+      {/* Toast Notification */}
+      {toastNotification && (
+        <div
+          className={`px-4 py-2.5 rounded-sm border text-xs flex items-center justify-between transition-all ${
+            toastNotification.type === "success"
+              ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+              : "bg-red-50 border-red-300 text-red-800"
+          }`}
+        >
+          <div className="flex items-center space-x-2">
+            <i
+              className={`fa-solid ${
+                toastNotification.type === "success"
+                  ? "fa-circle-check text-emerald-600"
+                  : "fa-circle-exclamation text-red-600"
+              }`}
+            ></i>
+            <span className="font-medium">{toastNotification.message}</span>
+          </div>
+          <button
+            onClick={() => setToastNotification(null)}
+            className="text-gray-500 hover:text-gray-800 cursor-pointer ml-3"
+          >
+            <i className="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+      )}
 
       <DashboardCards insights={insights} />
 
@@ -247,9 +353,13 @@ export default function PrAiInsights() {
             <i className="fa-solid fa-check text-2xl"></i>
           </div>
           <div>
-            <h3 className="text-lg font-bold text-emerald-900 tracking-tight">0 Potential Issues Found.</h3>
+            <h3 className="text-lg font-bold text-emerald-900 tracking-tight">
+              0 Potential Issues Found.
+            </h3>
             <p className="text-sm  mt-1 max-w-md mx-auto leading-relaxed">
-              The AI code review completed successfully and didn't flag any security vulnerabilities, syntax errors, or major code smells. Great job!
+              The AI code review completed successfully and didn't flag any
+              security vulnerabilities, syntax errors, or major code smells.
+              Great job!
             </p>
           </div>
         </div>
@@ -261,129 +371,231 @@ export default function PrAiInsights() {
 
           <div className="space-y-10">
             {reviewThreads.map((thread) => (
-            <div key={thread.id} id={`issue-${thread.id}`} className="relative group">
-              {/* Horizontal Branch Line pointing from the main trunk to the card */}
-              <div className="absolute -left-[12px] top-5 w-3 h-0.5 bg-emerald-500"></div>
+              <div
+                key={thread.id}
+                id={`issue-${thread.id}`}
+                className="relative group"
+              >
+                {/* Horizontal Branch Line pointing from the main trunk to the card */}
+                <div className="absolute -left-[12px] top-5 w-3 h-0.5 bg-emerald-500"></div>
 
-              {/* Review Card */}
-              <div className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-all duration-500 ${ignoredIssues.has(thread.id) ? 'opacity-50 grayscale' : ''}`}>
-                {/* Diff Context Header */}
-                <div className="bg-gray-100/70 px-3 py-2 border-b border-gray-200 flex items-center justify-between font-mono text-xs text-gray-600">
-                  <span className="font-medium text-gray-900">
-                    {thread.filePath}
-                  </span>
-                  <div className="flex items-center space-x-4">
-                    <span className="text-gray-500">
-                      Lines +{thread.startLine} to +{thread.endLine}
+                {/* Review Card */}
+                <div
+                  className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-all duration-500 ${ignoredIssues.has(thread.id) ? "opacity-50 grayscale" : ""}`}
+                >
+                  {/* Diff Context Header */}
+                  <div className="bg-gray-100/70 px-3 py-2 border-b border-gray-200 flex items-center justify-between font-mono text-xs text-gray-600">
+                    <span className="font-medium text-gray-900">
+                      {thread.filePath}
                     </span>
-                    {/* Minimalist Ignore Toggle */}
-                    {!isFromTracked && (
-                      <button 
-                        onClick={() => toggleIgnore(thread.id)}
-                        className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-[11px] font-medium border cursor-pointer transition-all shadow-sm ${
-                          ignoredIssues.has(thread.id)
-                          ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
-                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900'
-                        }`}
-                        title={ignoredIssues.has(thread.id) ? "Restore this issue" : "Ignore this issue"}
-                      >
-                        <i className={`fa-solid ${ignoredIssues.has(thread.id) ? 'fa-arrow-rotate-left' : 'fa-ban text-gray-400'}`}></i>
-                        <span>{ignoredIssues.has(thread.id) ? 'Restore' : 'Ignore'}</span>
-                      </button>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-gray-500">
+                        Lines +{thread.startLine} to +{thread.endLine}
+                      </span>
+
+                      {/* Minimalist Ignore Toggle */}
+                      {!isFromTracked && (
+                        <button
+                          onClick={() => toggleIgnore(thread.id)}
+                          className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-[11px] font-medium border cursor-pointer transition-all shadow-sm ${
+                            ignoredIssues.has(thread.id)
+                              ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
+                              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+                          }`}
+                          title={
+                            ignoredIssues.has(thread.id)
+                              ? "Restore this issue"
+                              : "Ignore this issue"
+                          }
+                        >
+                          <i
+                            className={`fa-solid ${ignoredIssues.has(thread.id) ? "fa-arrow-rotate-left" : "fa-ban text-gray-400"}`}
+                          ></i>
+                          <span>
+                            {ignoredIssues.has(thread.id)
+                              ? "Restore"
+                              : "Ignore"}
+                          </span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Code Snippet Block */}
+                  {(() => {
+                    const computedCodeLines =
+                      thread.codeLines ||
+                      (thread.suggestedRemovedCode
+                        ? thread.suggestedRemovedCode
+                            .split("\n")
+                            .map((text, i) => ({
+                              num: thread.startLine + i,
+                              text,
+                            }))
+                        : null);
+                    return (
+                      computedCodeLines && (
+                        <div className="border-b border-gray-200">
+                          <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 text-[11px] text-gray-600 font-semibold flex justify-between items-center">
+                            <span className=" tracking-wider">
+                              Current Code
+                            </span>
+                          </div>
+                          <div className="bg-gray-50 font-mono text-xs overflow-x-auto">
+                            {computedCodeLines.map((line, idx) => (
+                              <div
+                                key={idx}
+                                className="flex items-center px-3 py-1 bg-emerald-50/50 text-emerald-900"
+                              >
+                                <span className="w-8 text-right pr-3 text-gray-400 select-none text-[11px]">
+                                  {line.num}
+                                </span>
+                                <span className="text-emerald-600 font-semibold select-none mr-2">
+                                  +
+                                </span>
+                                <pre className="whitespace-pre">
+                                  {line.text}
+                                </pre>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )
+                    );
+                  })()}
+
+                  {/* Comment Thread */}
+                  <div className="p-4 space-y-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-semibold text-gray-900">
+                        {thread.author || "GitSight"}
+                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-gray-500">Type:</span>
+                        <span className="text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">
+                          {thread.issueType}
+                        </span>
+                        <span className="text-gray-500 ml-1">Severity:</span>
+                        <span
+                          className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${thread.severity?.toLowerCase() === "high" || thread.severity?.toLowerCase() === "critical" ? " text-red-700" : thread.severity?.toLowerCase() === "medium" || thread.severity?.toLowerCase() === "warning" ? "text-amber-700" : " text-gray-700"}`}
+                        >
+                          {thread.severity}
+                        </span>
+                      </div>
+                    </div>
+
+                    <p className="text-xs text-gray-700 leading-relaxed">
+                      {thread.comment}
+                    </p>
+
+                    {/* Diff Suggestion Box */}
+                    {(thread.suggestedRemovedCode ||
+                      thread.suggestedAddedCode) && (
+                      <div className="border border-gray-200 mt-3 font-mono text-xs rounded overflow-hidden">
+                        <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 text-[11px] text-gray-600 font-semibold flex justify-between items-center">
+                          <span>Suggested change</span>
+                          <button className="text-blue-600 hover:text-blue-700 font-sans font-medium cursor-pointer">
+                            Export Suggestion
+                          </button>
+                        </div>
+                        <div className="bg-white">
+                          {thread.suggestedRemovedCode && (
+                            <div className="bg-red-50 text-red-800 px-3 py-1 border-l-2 border-red-500 flex items-start">
+                              <span className="text-red-500 mr-2 select-none font-bold mt-0.5">
+                                -
+                              </span>
+                              <pre className="whitespace-pre-wrap">
+                                {thread.suggestedRemovedCode}
+                              </pre>
+                            </div>
+                          )}
+                          {thread.suggestedAddedCode && (
+                            <div className="bg-emerald-50 text-emerald-800 px-3 py-1 border-l-2 border-emerald-500 flex items-start">
+                              <span className="text-emerald-500 mr-2 select-none font-bold mt-0.5">
+                                +
+                              </span>
+                              <pre className="whitespace-pre-wrap">
+                                {thread.suggestedAddedCode}
+                              </pre>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {/* Card Action Footer */}
+                    <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2 text-xs">
+                      <div className="flex items-center space-x-1.5 text-[11px] text-gray-500 font-mono">
+                        <i className="fa-brands fa-github text-gray-700"></i>
+                        <span>
+                          Targets: {thread.filePath}:{thread.startLine}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        {(postedIssues.has(thread.id) || thread.isCommented || thread.IsCommented) ? (
+                          <div className="flex items-center space-x-2">
+                            <span className="text-emerald-700 font-semibold text-xs flex items-center space-x-1">
+                              <i className="fa-solid fa-circle-check text-emerald-600"></i>
+                              <span>Posted to GitHub PR Diff</span>
+                            </span>
+                            <a
+                              href={`https://github.com/${repoParam}/pull/${prNumberParam}/changes`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline text-xs font-medium flex items-center space-x-1"
+                            >
+                              <span>View PR</span>
+                              <i className="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                            </a>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handlePostToGitHub(thread)}
+                            disabled={
+                              postingIssueId === thread.id ||
+                              ignoredIssues.has(thread.id)
+                            }
+                            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-sm text-xs font-semibold transition-all shadow-xs ${
+                              postingIssueId === thread.id
+                                ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                : "bg-black hover:bg-gray-800 text-white cursor-pointer"
+                            }`}
+                          >
+                            {postingIssueId === thread.id ? (
+                              <>
+                                <i className="fa-solid fa-spinner animate-spin text-xs"></i>
+                                <span>Posting Comment...</span>
+                              </>
+                            ) : (
+                              <>
+                                <i className="fa-brands fa-github text-xs"></i>
+                                <span>Post Comment Directly to GitHub</span>
+                              </>
+                            )}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Inline Error if Posting Failed */}
+                    {postErrors[thread.id] && (
+                      <div className="mt-2 p-2.5 bg-red-50 border border-red-200 rounded-sm text-xs text-red-700 flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <i className="fa-solid fa-circle-exclamation text-red-600"></i>
+                          <span>{postErrors[thread.id]}</span>
+                        </div>
+                        <button
+                          onClick={() => handlePostToGitHub(thread)}
+                          className="text-red-700 font-bold hover:underline cursor-pointer ml-3 shrink-0"
+                        >
+                          Retry
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
-
-                {/* Code Snippet Block */}
-                {(() => {
-                  const computedCodeLines = thread.codeLines || (thread.suggestedRemovedCode ? thread.suggestedRemovedCode.split('\n').map((text, i) => ({ num: thread.startLine + i, text })) : null);
-                  return computedCodeLines && (
-                    <div className="border-b border-gray-200">
-                      <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 text-[11px] text-gray-600 font-semibold flex justify-between items-center">
-                        <span className=" tracking-wider">Current Code</span>
-                      </div>
-                      <div className="bg-gray-50 font-mono text-xs overflow-x-auto">
-                        {computedCodeLines.map((line, idx) => (
-                          <div
-                            key={idx}
-                            className="flex items-center px-3 py-1 bg-emerald-50/50 text-emerald-900"
-                          >
-                            <span className="w-8 text-right pr-3 text-gray-400 select-none text-[11px]">
-                              {line.num}
-                            </span>
-                            <span className="text-emerald-600 font-semibold select-none mr-2">
-                              +
-                            </span>
-                            <pre className="whitespace-pre">{line.text}</pre>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-
-                {/* Comment Thread */}
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-gray-900">
-                      {thread.author || "GitSight"}
-                    </span>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-gray-500">Type:</span>
-                      <span className="text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">
-                        {thread.issueType}
-                      </span>
-                      <span className="text-gray-500 ml-1">Severity:</span>
-                      <span
-                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${thread.severity?.toLowerCase() === "high" || thread.severity?.toLowerCase() === "critical" ? " text-red-700" : thread.severity?.toLowerCase() === "medium" || thread.severity?.toLowerCase() === "warning" ? "text-amber-700" : " text-gray-700"}`}
-                      >
-                        {thread.severity}
-                      </span>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-gray-700 leading-relaxed">
-                    {thread.comment}
-                  </p>
-
-                  {/* Diff Suggestion Box */}
-                  {(thread.suggestedRemovedCode ||
-                    thread.suggestedAddedCode) && (
-                    <div className="border border-gray-200 mt-3 font-mono text-xs rounded overflow-hidden">
-                      <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 text-[11px] text-gray-600 font-semibold flex justify-between items-center">
-                        <span>Suggested change</span>
-                        <button className="text-blue-600 hover:text-blue-700 font-sans font-medium cursor-pointer">
-                          Export Suggestion
-                        </button>
-                      </div>
-                      <div className="bg-white">
-                        {thread.suggestedRemovedCode && (
-                          <div className="bg-red-50 text-red-800 px-3 py-1 border-l-2 border-red-500 flex items-start">
-                            <span className="text-red-500 mr-2 select-none font-bold mt-0.5">
-                              -
-                            </span>
-                            <pre className="whitespace-pre-wrap">
-                              {thread.suggestedRemovedCode}
-                            </pre>
-                          </div>
-                        )}
-                        {thread.suggestedAddedCode && (
-                          <div className="bg-emerald-50 text-emerald-800 px-3 py-1 border-l-2 border-emerald-500 flex items-start">
-                            <span className="text-emerald-500 mr-2 select-none font-bold mt-0.5">
-                              +
-                            </span>
-                            <pre className="whitespace-pre-wrap">
-                              {thread.suggestedAddedCode}
-                            </pre>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
-            </div>
-          ))}
+            ))}
           </div>
         </div>
       )}
@@ -401,22 +613,34 @@ export default function PrAiInsights() {
             {activeModal === "export" ? (
               <div className="flex flex-col space-y-3">
                 <button
-                  onClick={() => { generateTxtReport(insights, prNumberParam); setActiveModal(null); }}
+                  onClick={() => {
+                    generateTxtReport(insights, prNumberParam);
+                    setActiveModal(null);
+                  }}
                   className="px-4 py-2.5 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded transition-colors text-center cursor-pointer shadow-sm"
                 >
-                  <i className="fa-regular fa-file-lines mr-2"></i> Download as TXT
+                  <i className="fa-regular fa-file-lines mr-2"></i> Download as
+                  TXT
                 </button>
                 <button
-                  onClick={() => { generateExcelReport(insights, prNumberParam); setActiveModal(null); }}
+                  onClick={() => {
+                    generateExcelReport(insights, prNumberParam);
+                    setActiveModal(null);
+                  }}
                   className="px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition-colors text-center cursor-pointer shadow-sm"
                 >
-                  <i className="fa-regular fa-file-excel mr-2"></i> Download as Excel
+                  <i className="fa-regular fa-file-excel mr-2"></i> Download as
+                  Excel
                 </button>
                 <button
-                  onClick={() => { generatePdfReport(insights, prNumberParam); setActiveModal(null); }}
+                  onClick={() => {
+                    generatePdfReport(insights, prNumberParam);
+                    setActiveModal(null);
+                  }}
                   className="px-4 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded transition-colors text-center cursor-pointer shadow-sm"
                 >
-                  <i className="fa-regular fa-file-pdf mr-2"></i> Download as PDF
+                  <i className="fa-regular fa-file-pdf mr-2"></i> Download as
+                  PDF
                 </button>
                 <button
                   onClick={() => setActiveModal(null)}

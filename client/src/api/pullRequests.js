@@ -59,6 +59,21 @@ export const pullRequestsApi = {
     });
     return response.data;
   },
+
+  postCommentToGitHub: async ({ owner, repo, prNumber, issueId, filePath, line, comment, suggestedCode, suggestedRemovedCode }) => {
+    const response = await axiosClient.post(`/api/pullrequests/${owner}/${repo}/${prNumber}/post-comment`, {
+      owner,
+      repo,
+      prNumber: Number(prNumber),
+      issueId,
+      filePath,
+      line: Number(line),
+      comment,
+      suggestedCode,
+      suggestedRemovedCode,
+    });
+    return response.data;
+  },
 };
 
 export default pullRequestsApi;

@@ -73,14 +73,14 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights }) => {
                     <span>Track Issues</span>
                   </button>
                 )}
-                <button
+                {/* <button
                   onClick={handleReReview}
                   disabled={isReReviewing}
                   className="inline-flex items-center space-x-1 text-xs font-medium bg-slate-50 border border-gray-300 text-gray-700 px-3 py-1.5 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 cursor-pointer transition-colors shrink-0"
                 >
                   <i className={`fa-solid fa-rotate-right ${isReReviewing ? 'animate-spin' : ''}`}></i>
                   <span>{isReReviewing ? 'Re-reviewing...' : 'Trigger Re-review'}</span>
-                </button>
+                </button> */}
               </div>
             </div>
             

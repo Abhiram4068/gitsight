@@ -29,6 +29,7 @@ public class AiReviewIssue
     public string? SuggestedAddedCode { get; set; }
 
     public bool IsIgnored { get; set; } = false;
+    public bool IsCommented { get; set; } = false;
 
     // Timestamps
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

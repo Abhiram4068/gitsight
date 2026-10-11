@@ -50,6 +50,9 @@ namespace GitSight.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<bool>("IsCommented")
+                        .HasColumnType("bit");
+
                     b.Property<bool>("IsIgnored")
                         .HasColumnType("bit");
 

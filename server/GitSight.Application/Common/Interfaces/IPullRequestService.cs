@@ -19,4 +19,5 @@ public interface IPullRequestService
     Task<AiReviewSession> AnalyzePullRequestAsync(string token, string owner, string repo, int prNumber);
     Task<bool> MergePullRequestAsync(string token, MergePrRequestDto request);
     Task<bool> PostReviewToGitHubAsync(string token, Guid id, PostReviewCommentsRequestDto request);
+    Task<bool> PostSingleCommentToGitHubAsync(string token, string owner, string repo, int prNumber, PostSingleCommentRequestDto request);
 }
