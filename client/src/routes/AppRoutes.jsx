@@ -12,6 +12,11 @@ const PrDetail = lazy(() => import('../pages/pr-detail'));
 const PrAiInsights = lazy(() => import('../pages/PrAiInsights'));
 const Webhooks = lazy(() => import('../pages/Webhooks'));
 const TrackedIssues = lazy(() => import('../pages/TrackedIssues'));
+const ReviewRules = lazy(() => import('../pages/ReviewRules'));
+const Analytics = lazy(() => import('../pages/Analytics'));
+const Notifications = lazy(() => import('../pages/Notifications'));
+const Settings = lazy(() => import('../pages/Settings'));
+const DeleteAccount = lazy(() => import('../pages/DeleteAccount'));
 
 const PageLoader = () => (
   <div className="flex items-center justify-center min-h-[400px] text-gray-500 text-sm space-x-2">
@@ -32,6 +37,11 @@ export default function AppRoutes() {
           <Route path="/pull-requests" element={<PullRequests />} />
           <Route path="/webhooks" element={<Webhooks />} />
           <Route path="/tracked-issues" element={<TrackedIssues />} />
+          <Route path="/review-rules" element={<ReviewRules />} />
+          <Route path="/analytics" element={<Analytics />} />
+          <Route path="/notifications" element={<Notifications />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="/delete-account" element={<DeleteAccount />} />
         </Route>
 
         {/* AI Insights Routes */}

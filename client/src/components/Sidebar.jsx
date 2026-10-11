@@ -69,6 +69,20 @@ export default function Sidebar() {
         </NavLink>
         <hr className="border-gray-200" />
         <NavLink
+          to="/analytics"
+          className={({ isActive }) =>
+            `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
+              isActive
+                ? "text-blue-600 bg-blue-50/50 border-r-2 border-blue-600"
+                : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+            }`
+          }
+        >
+          <i className="fa-solid fa-chart-column w-4 text-center"></i>{" "}
+          <span>Analytics</span>
+        </NavLink>
+        <hr className="border-gray-200" />
+        <NavLink
           to="/webhooks"
           className={({ isActive }) =>
             `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
@@ -80,6 +94,73 @@ export default function Sidebar() {
         >
           <i className="fa-solid fa-gears w-4 text-center"></i>{" "}
           <span>Webhooks</span>
+        </NavLink>
+        <hr className="border-gray-200" />
+        
+        <NavLink
+          to="/review-rules"
+          className={({ isActive }) =>
+            `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
+              isActive
+                ? "text-blue-600 bg-blue-50/50 border-r-2 border-blue-600"
+                : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+            }`
+          }
+        >
+          <i className="fa-solid fa-sliders  w-4 text-center"></i>{" "}
+          <span>Configure Rules</span>
+        </NavLink>
+        <hr className="border-gray-200" />
+        <NavLink
+          to="/settings"
+          className={({ isActive }) =>
+            `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
+              isActive
+                ? "text-blue-600 bg-blue-50/50 border-r-2 border-blue-600"
+                : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+            }`
+          }
+        >
+          <i className="fa-solid fa-gear w-4 text-center"></i>{" "}
+          <span>Settings</span>
+        </NavLink>
+        <hr className="border-gray-200" />
+        <NavLink
+          to="/notifications"
+          className={({ isActive }) =>
+            `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
+              isActive
+                ? "text-blue-600 bg-blue-50/50 border-r-2 border-blue-600"
+                : "text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+            }`
+          }
+        >
+          <i className="fa-solid fa-bell w-4 text-center"></i>{" "}
+          <span>Notifications</span>
+        </NavLink>
+        <hr className="border-gray-200" />
+        <a
+          href="https://github.com/settings/profile"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors text-gray-600 hover:bg-gray-200 hover:text-gray-900"
+        >
+          <i className="fa-brands fa-github w-4 text-center"></i>{" "}
+          <span>GitHub Profile</span>
+        </a>
+        <hr className="border-gray-200" />
+        <NavLink
+          to="/delete-account"
+          className={({ isActive }) =>
+            `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
+              isActive
+                ? "text-red-700 bg-red-50 border-r-2 border-red-600 font-semibold"
+                : "text-red-600 hover:bg-red-50 hover:text-red-700"
+            }`
+          }
+        >
+          <i className="fa-solid fa-trash-can w-4 text-center"></i>{" "}
+          <span>Delete Account</span>
         </NavLink>
         <hr className="border-gray-200" />
       </nav>
