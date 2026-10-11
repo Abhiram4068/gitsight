@@ -21,8 +21,9 @@ export default function Header({ user, onLogout }) {
   return (
     <header className="h-14 border-b border-gray-200 flex items-center justify-between px-6 bg-white shrink-0 relative">
       <div className="flex items-center space-x-3">
-        <Link to="/" className="flex items-center space-x-3">
-          <div className="text-black p-1.5 text-md font-bold tracking-wider">
+        <Link to="/" className="flex items-center space-x-2.5 group">
+          <img src="/gitsight.svg" alt="GitSight Logo" className="w-5 h-5 object-contain" />
+          <div className="text-black text-md font-bold tracking-wider group-hover:text-blue-600 transition-colors">
             GitSight.
           </div>
         </Link>

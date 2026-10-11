@@ -65,7 +65,7 @@ export default function Sidebar() {
           }
         >
           <i className="fa-solid fa-circle-exclamation w-4 text-center"></i>{" "}
-          <span>Issues</span>
+          <span>Tracked Issues</span>
         </NavLink>
         <hr className="border-gray-200" />
         {/* <NavLink
@@ -109,7 +109,7 @@ export default function Sidebar() {
           <i className="fa-solid fa-sliders  w-4 text-center"></i>{" "}
           <span>Configure Rules</span>
         </NavLink>
-        <hr className="border-gray-200" /> */}
+        <hr className="border-gray-200" /> 
         <NavLink
           to="/pipelines"
           className={({ isActive }) =>
@@ -124,7 +124,6 @@ export default function Sidebar() {
           <span>Pipelines</span>
         </NavLink>
         <hr className="border-gray-200" />
-        {/*}
         <NavLink
           to="/settings"
           className={({ isActive }) =>
