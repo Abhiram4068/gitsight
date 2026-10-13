@@ -4,7 +4,7 @@ import { pullRequestsApi } from '../api/pullRequests';
 import { trackedIssuesApi } from '../api/trackedIssues';
 import StatusBadge from '../components/StatusBadge';
 
-const AiNavbar = ({ navigate, location, stats, insights, setInsights }) => {
+const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSidebar }) => {
   const [searchParams] = useSearchParams();
   const [isReReviewing, setIsReReviewing] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -33,22 +33,33 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights }) => {
   return (
     <header className="bg-white border-b border-gray-200 shrink-0 sticky top-0 z-20">
       {/* Top utility bar */}
-      <div className="px-6 py-2 border-b border-gray-100 flex items-center justify-between bg-gray-100">
+      <div className="px-4 sm:px-6 py-2 border-b border-gray-100 flex items-center justify-between bg-gray-100">
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer"
         >
           &larr; {searchParams.get('from') === 'tracked' ? 'Back to Tracked Issues' : 'Back to Pull Request Details'}
         </button>
+
+        {/* Mobile right-sidebar toggle */}
+        {onToggleSidebar && (
+          <button
+            onClick={onToggleSidebar}
+            className="lg:hidden flex items-center space-x-1 text-xs font-medium text-gray-500 hover:text-gray-900 border border-gray-300 px-2.5 py-1 rounded bg-white cursor-pointer"
+          >
+            <i className="fa-solid fa-sidebar text-[10px]"></i>
+            <span>Legend</span>
+          </button>
+        )}
       </div>
       
       {/* PR Metadata bar */}
-      <div className="px-6 py-4 mx-auto w-full">
+      <div className="px-4 sm:px-6 py-4 mx-auto w-full">
         {stats ? (
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <h1 className="text-xl font-bold text-gray-900">{stats.title}</h1>
+            <div className="flex flex-wrap items-start justify-between gap-2">
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">{stats.title}</h1>
                 <span className="text-xl font-light text-gray-400">#{stats.prNumber}</span>
                 <StatusBadge state={stats.state} mergedAt={stats.mergedAt} isDraft={stats.isDraft} />
                 <span className="text-xs font-medium text-blue-600 bg-blue-100 px-2.5 py-0.5 rounded-full">
@@ -73,19 +84,11 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights }) => {
                     <span>Track Issues</span>
                   </button>
                 )}
-                {/* <button
-                  onClick={handleReReview}
-                  disabled={isReReviewing}
-                  className="inline-flex items-center space-x-1 text-xs font-medium bg-slate-50 border border-gray-300 text-gray-700 px-3 py-1.5 rounded shadow-sm hover:bg-gray-50 disabled:opacity-50 cursor-pointer transition-colors shrink-0"
-                >
-                  <i className={`fa-solid fa-rotate-right ${isReReviewing ? 'animate-spin' : ''}`}></i>
-                  <span>{isReReviewing ? 'Re-reviewing...' : 'Trigger Re-review'}</span>
-                </button> */}
               </div>
             </div>
             
-            <div className="flex items-center justify-between">
-              <div className="flex items-center text-xs text-gray-600 space-x-4">
+            <div className="flex flex-wrap items-center justify-between gap-y-1">
+              <div className="flex flex-wrap items-center text-xs text-gray-600 gap-x-3 gap-y-1">
                 <div>
                   <span className="font-semibold text-gray-900">{stats.author}</span>
                   <span> wants to merge </span>
@@ -93,9 +96,9 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights }) => {
                   <span> into </span>
                   <span className="font-mono text-blue-600 bg-blue-50 px-1 rounded">{stats.baseBranch}</span>
                 </div>
-                <span className="text-gray-300">&bull;</span>
-                <span>Opened: {new Date(stats.createdAt).toLocaleDateString()}</span>
-                <span className="text-gray-300">&bull;</span>
+                <span className="text-gray-300 hidden sm:inline">&bull;</span>
+                <span className="hidden sm:inline">Opened: {new Date(stats.createdAt).toLocaleDateString()}</span>
+                <span className="text-gray-300 hidden sm:inline">&bull;</span>
                 <div className="flex items-center space-x-2 font-medium">
                   <span className="text-gray-900">{stats.changedFiles} Files changed</span>
                   <span className="text-emerald-600">+{stats.additions}</span>
@@ -106,12 +109,14 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights }) => {
               {insights && (
                 <div className="flex items-center text-xs">
                   {insights.isWebhook ? (
-                    <div className="text-amber-700 font-medium flex items-center space-x-1.5  px-2.5 py-1 " title="Review triggered automatically by GitHub webhook">
-                      <span>Webhook Triggered on {new Date(insights.createdAt.endsWith('Z') ? insights.createdAt : insights.createdAt + 'Z').toLocaleString()}</span>
+                    <div className="text-amber-700 font-medium flex items-center space-x-1.5 px-2.5 py-1" title="Review triggered automatically by GitHub webhook">
+                      <span className="hidden sm:inline">Webhook Triggered on {new Date(insights.createdAt.endsWith('Z') ? insights.createdAt : insights.createdAt + 'Z').toLocaleString()}</span>
+                      <span className="sm:hidden">Webhook</span>
                     </div>
                   ) : (
-                    <div className="text-gray-600 font-medium flex items-center space-x-1.5  px-2.5 py-1 " title="Review triggered manually from GitSight dashboard">
-                      <span>Manually Triggered on {new Date(insights.createdAt.endsWith('Z') ? insights.createdAt : insights.createdAt + 'Z').toLocaleString()}</span>
+                    <div className="text-gray-600 font-medium flex items-center space-x-1.5 px-2.5 py-1" title="Review triggered manually from GitSight dashboard">
+                      <span className="hidden sm:inline">Manually Triggered on {new Date(insights.createdAt.endsWith('Z') ? insights.createdAt : insights.createdAt + 'Z').toLocaleString()}</span>
+                      <span className="sm:hidden">Manual</span>
                     </div>
                   )}
                 </div>
@@ -125,7 +130,8 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights }) => {
           </div>
         )}
       </div>
-      
+
+
       {/* Confirm Tracking Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-40">
@@ -284,6 +290,7 @@ export default function AiInsightsLayout() {
   const [searchParams] = useSearchParams();
   const [stats, setStats] = useState(null);
   const [insights, setInsights] = useState(null);
+  const [rightSidebarOpen, setRightSidebarOpen] = useState(false);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -314,13 +321,29 @@ export default function AiInsightsLayout() {
 
   return (
     <div className="bg-gray-50 text-gray-900 h-screen flex flex-col font-sans overflow-hidden">
-      <AiNavbar navigate={navigate} location={location} stats={stats} insights={insights} setInsights={setInsights} />
-      <div className="flex flex-1 overflow-hidden">
+      <AiNavbar
+        navigate={navigate}
+        location={location}
+        stats={stats}
+        insights={insights}
+        setInsights={setInsights}
+        onToggleSidebar={() => setRightSidebarOpen(prev => !prev)}
+      />
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile right sidebar overlay backdrop */}
+        {rightSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+            onClick={() => setRightSidebarOpen(false)}
+            aria-hidden="true"
+          />
+        )}
+
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto custom-scrollbar">
           {stats && insights && (
             <div className="bg-amber-50 border-b border-amber-200 w-full">
-              <div className="px-6 py-2 text-amber-800 text-xs font-medium flex items-center">
+              <div className="px-4 sm:px-6 py-2 text-amber-800 text-xs font-medium flex items-center">
                 <i className="fa-solid fa-circle-exclamation mr-2 text-amber-500 text-sm"></i>
                 <div>
                   This PR #{stats.prNumber} review was opened at {openedAt.toLocaleString()} and was reviewed at {reviewedAt.toLocaleString()} and has an overall confidence score of <span className="font-bold text-amber-900">{insights.overallConfidenceScore || 0}%</span>.
@@ -328,13 +351,27 @@ export default function AiInsightsLayout() {
               </div>
             </div>
           )}
-          <div className="max-w-5xl mx-auto p-6 space-y-6">
+          <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
             <Outlet context={{ setInsights, stats }} />
           </div>
         </main>
         
-        {/* Fixed Right Sidebar */}
-        <aside className="w-80 bg-white border-l border-gray-200 overflow-y-auto flex-shrink-0 shadow-sm z-10">
+        {/* Right Sidebar â€” fixed overlay on mobile, always visible on lg+ */}
+        <aside
+          className={`
+            fixed top-0 right-0 bottom-0 w-80 bg-white border-l border-gray-200 overflow-y-auto z-40 shadow-xl
+            transform transition-transform duration-300 ease-in-out
+            ${rightSidebarOpen ? 'translate-x-0' : 'translate-x-full'}
+            lg:static lg:translate-x-0 lg:shadow-sm lg:z-auto lg:flex-shrink-0
+          `}
+        >
+          {/* Mobile close button */}
+          <button
+            onClick={() => setRightSidebarOpen(false)}
+            className="lg:hidden absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded text-gray-500 hover:bg-gray-100 transition-colors"
+          >
+            <i className="fa-solid fa-xmark text-sm"></i>
+          </button>
           <RightSidebar />
         </aside>
       </div>

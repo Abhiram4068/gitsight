@@ -115,6 +115,11 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
             entity.Property(t => t.FilePath).IsRequired().HasMaxLength(500);
             entity.Property(t => t.IssueType).HasMaxLength(100);
             entity.Property(t => t.Severity).HasMaxLength(50);
+
+            entity.HasOne(t => t.TrackedByUser)
+                  .WithMany()
+                  .HasForeignKey(t => t.TrackedByUserId)
+                  .OnDelete(DeleteBehavior.NoAction);
         });
     }
 }

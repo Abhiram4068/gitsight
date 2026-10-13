@@ -24,10 +24,10 @@ public class TrackedIssueRepository : ITrackedIssueRepository
             .ToListAsync();
     }
 
-    public async Task<List<Guid>> GetExistingTrackedIssueIdsAsync(int pullRequestNumber)
+    public async Task<List<Guid>> GetExistingTrackedIssueIdsAsync(int pullRequestNumber, Guid userId)
     {
         return await _context.TrackedIssues
-            .Where(t => t.PullRequestNumber == pullRequestNumber)
+            .Where(t => t.PullRequestNumber == pullRequestNumber && t.TrackedByUserId == userId)
             .Select(t => t.AiReviewIssueId)
             .ToListAsync();
     }
@@ -48,9 +48,11 @@ public class TrackedIssueRepository : ITrackedIssueRepository
         }
     }
 
-    public async Task RemoveTrackedIssuesAsync(int pullRequestNumber)
+    public async Task RemoveTrackedIssuesAsync(int pullRequestNumber, Guid userId)
     {
-        var issues = await _context.TrackedIssues.Where(t => t.PullRequestNumber == pullRequestNumber).ToListAsync();
+        var issues = await _context.TrackedIssues
+            .Where(t => t.PullRequestNumber == pullRequestNumber && t.TrackedByUserId == userId)
+            .ToListAsync();
         if (issues.Any())
         {
             _context.TrackedIssues.RemoveRange(issues);
@@ -79,9 +81,17 @@ public class TrackedIssueRepository : ITrackedIssueRepository
         await _context.SaveChangesAsync();
     }
 
-    public async Task<List<AiReviewSession>> GetTrackedPrsAsync(string? search)
+    public async Task<List<AiReviewSession>> GetTrackedPrsAsync(string? search, Guid userId)
     {
-        var query = _context.AiReviewSessions.Where(s => s.IsTracked);
+        // Filter sessions that have at least one tracked issue belonging to the current user
+        var trackedPrNumbers = await _context.TrackedIssues
+            .Where(t => t.TrackedByUserId == userId)
+            .Select(t => t.PullRequestNumber)
+            .Distinct()
+            .ToListAsync();
+
+        var query = _context.AiReviewSessions
+            .Where(s => s.IsTracked && trackedPrNumbers.Contains(s.PrNumber));
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -93,9 +103,10 @@ public class TrackedIssueRepository : ITrackedIssueRepository
         return await query.OrderByDescending(s => s.CreatedAt).ToListAsync();
     }
 
-    public async Task<List<TrackedIssue>> GetTrackedIssuesForPrAsync(int prNumber, string? search, string? status, string? severity, string? issueType)
+    public async Task<List<TrackedIssue>> GetTrackedIssuesForPrAsync(int prNumber, string? search, string? status, string? severity, string? issueType, Guid userId)
     {
-        var query = _context.TrackedIssues.Where(t => t.PullRequestNumber == prNumber);
+        var query = _context.TrackedIssues
+            .Where(t => t.PullRequestNumber == prNumber && t.TrackedByUserId == userId);
 
         if (!string.IsNullOrWhiteSpace(search))
         {

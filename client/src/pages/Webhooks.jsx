@@ -163,7 +163,7 @@ export default function Webhooks() {
 
       {/* Controls Bar: Search Bar */}
       <div className="flex items-center bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-b-0 mt-3 rounded-t-sm shadow-sm">
-        <div className="flex-1 max-w-md relative">
+        <div className="flex-1 w-full sm:max-w-md relative">
           <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
           <input
             type="text"
@@ -248,7 +248,7 @@ export default function Webhooks() {
         </div>
 
         {/* Stable Pagination Footer */}
-        <div className="border-t border-gray-200 bg-gray-50 px-4 py-2.5 flex items-center justify-between text-xs text-gray-600 select-none">
+        <div className="border-t border-gray-200 bg-gray-50 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 select-none">
           <div className="flex items-center space-x-1.5">
             <span>
               Showing <span className="font-semibold text-gray-900">{totalRecords === 0 ? 0 : startIndex + 1}</span> to{' '}

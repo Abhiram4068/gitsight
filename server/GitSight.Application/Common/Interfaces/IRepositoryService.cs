@@ -5,5 +5,6 @@ namespace GitSight.Application.Common.Interfaces;
 
 public interface IRepositoryService
 {
-    Task<PaginatedResponseDto<RepositoryDto>> GetPaginatedRepositoriesAsync(string token, string? search, int pageNumber, int pageSize);
+    Task<PaginatedResponseDto<RepositoryDto>> GetPaginatedRepositoriesAsync(
+        string token, string? search = null, string? role = null, string? sortByPrs = null, int pageNumber = 1, int pageSize = 10);
 }

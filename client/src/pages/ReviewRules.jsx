@@ -103,7 +103,7 @@ export default function ReviewRules() {
   const fetchRepositories = async () => {
     setIsLoading(true);
     try {
-      const response = await repositoryApi.getRepositories();
+      const response = await repositoryApi.getRepositories({ pageSize: 100 });
       if (response?.items) {
         setRepositories(response.items);
       } else if (response?.data?.items) {

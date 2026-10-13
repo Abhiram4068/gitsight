@@ -235,14 +235,14 @@ public class PullRequestService : IPullRequestService
         if (insight != null && insight.Status == PrInsightStatus.Analyzing)
         {
             var timeSinceUpdate = DateTime.UtcNow - (insight.UpdatedAt ?? insight.CreatedAt);
-            if (timeSinceUpdate.TotalMinutes < 5)
+            if (timeSinceUpdate.TotalMinutes < 1)
             {
                 _logger.LogWarning("Analysis is already in progress for PR #{PrNumber}.", prNumber);
                 throw new InvalidOperationException("Analysis is already in progress for this PR.");
             }
             else
             {
-                _logger.LogInformation("Analysis for PR #{PrNumber} seems stuck in 'Analyzing' state. Allowing retry.", prNumber);
+                _logger.LogInformation("Analysis for PR #{PrNumber} was in 'Analyzing' state. Resetting for retry.", prNumber);
             }
         }
 
@@ -274,13 +274,26 @@ public class PullRequestService : IPullRequestService
             await _repository.SaveChangesAsync();
         }
 
-        _logger.LogInformation("Calling Gemini AI Service for PR #{PrNumber} with Diff length: {DiffLength}", prNumber, diff.Length);
-        var analysisDto = await _geminiService.AnalyzeDiffAsync(diff, prDetails.Title, prDetails.Description);
+        _logger.LogInformation("Calling AI Service for PR #{PrNumber} with Diff length: {DiffLength}", prNumber, diff.Length);
+        GeminiReviewResultDto analysisDto;
+        try
+        {
+            analysisDto = await _geminiService.AnalyzeDiffAsync(diff, prDetails.Title, prDetails.Description);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "AI analysis failed for PR #{PrNumber}", prNumber);
+            insight.Status = PrInsightStatus.Failed;
+            insight.UpdatedAt = DateTime.UtcNow;
+            await _repository.SaveChangesAsync();
+            throw;
+        }
         
         if (analysisDto == null || string.IsNullOrEmpty(analysisDto.ExecutiveSummary))
         {
-            _logger.LogError("Gemini AI analysis returned null or empty summary for PR #{PrNumber}", prNumber);
+            _logger.LogError("AI analysis returned null or empty summary for PR #{PrNumber}", prNumber);
             insight.Status = PrInsightStatus.Failed;
+            insight.UpdatedAt = DateTime.UtcNow;
             await _repository.SaveChangesAsync();
             throw new InvalidOperationException("Failed to generate AI review.");
         }

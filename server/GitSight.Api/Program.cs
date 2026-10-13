@@ -42,7 +42,7 @@ builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<Gi
 // Register HttpClients & Infrastructure Services
 builder.Services.AddHttpClient<IGitHubAuthService, GitHubAuthService>();
 builder.Services.AddHttpClient<IGitHubService, GitHubService>();
-builder.Services.AddHttpClient<IAiReviewService, GeminiService>(client => 
+builder.Services.AddHttpClient<IAiReviewService, OpenRouterService>(client => 
 {
     client.Timeout = TimeSpan.FromMinutes(5);
 });

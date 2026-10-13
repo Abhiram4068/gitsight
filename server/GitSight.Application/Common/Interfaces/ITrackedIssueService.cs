@@ -7,10 +7,10 @@ namespace GitSight.Application.Common.Interfaces;
 
 public interface ITrackedIssueService
 {
-    Task<ApiResponse<bool>> TrackIssuesAsync(TrackIssuesRequestDto request);
-    Task<ApiResponse<bool>> UntrackIssuesAsync(TrackIssuesRequestDto request);
+    Task<ApiResponse<bool>> TrackIssuesAsync(TrackIssuesRequestDto request, Guid userId);
+    Task<ApiResponse<bool>> UntrackIssuesAsync(TrackIssuesRequestDto request, Guid userId);
     
-    Task<ApiResponse<List<TrackedPrDto>>> GetTrackedPrsAsync(string? search);
-    Task<ApiResponse<List<TrackedIssueDto>>> GetTrackedIssuesForPrAsync(int prNumber, string? search, string? status, string? severity, string? issueType);
+    Task<ApiResponse<List<TrackedPrDto>>> GetTrackedPrsAsync(string? search, Guid userId);
+    Task<ApiResponse<List<TrackedIssueDto>>> GetTrackedIssuesForPrAsync(int prNumber, string? search, string? status, string? severity, string? issueType, Guid userId);
     Task<ApiResponse<TrackedIssueDto>> UpdateTrackedIssueStatusAsync(Guid id, UpdateTrackedIssueStatusDto request);
 }

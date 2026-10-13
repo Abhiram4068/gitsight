@@ -158,11 +158,11 @@ export default function TrackedIssues() {
         </div>
 
         {/* Right side controls: Custom PR selector and refresh */}
-        <div className="flex items-center space-x-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <label className="text-xs text-gray-500 font-medium whitespace-nowrap">Tracked PR:</label>
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative flex-1 sm:flex-none" ref={dropdownRef}>
             <div 
-              className="flex items-center justify-between w-[350px] text-xs border border-gray-300 bg-white px-3 py-1.5 text-gray-800 cursor-pointer hover:border-gray-400 rounded-sm"
+              className="flex items-center justify-between w-full sm:w-[300px] lg:w-[350px] text-xs border border-gray-300 bg-white px-3 py-1.5 text-gray-800 cursor-pointer hover:border-gray-400 rounded-sm"
               onClick={() => setIsPrDropdownOpen(!isPrDropdownOpen)}
             >
               <div className="truncate">
@@ -234,9 +234,9 @@ export default function TrackedIssues() {
       </div>
 
       {/* Controls Bar: Status Filter Tabs & Search Bar */}
-      <div className="flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
         {/* Status Tabs */}
-        <div className="flex items-center space-x-1 bg-white p-0.5 border border-gray-300 rounded">
+        <div className="flex flex-wrap items-center gap-1 bg-white p-0.5 border border-gray-300 rounded">
           {['all', 'Opened', 'InProgress', 'Resolved', 'Closed'].map((status) => (
             <button
               key={status}
@@ -413,7 +413,7 @@ export default function TrackedIssues() {
         </div>
 
         {/* Stable Pagination Footer */}
-        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex items-center justify-between text-xs text-gray-600 select-none">
+        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 select-none">
           <div className="flex items-center space-x-1.5">
             <span>
               Showing <span className="font-semibold text-gray-900">{totalRecords === 0 ? 0 : startIndex + 1}</span> to{' '}

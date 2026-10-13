@@ -21,9 +21,9 @@ public class AuthService : IAuthService
         _jwtService = jwtService;
     }
 
-    public string GetLoginUrl(string state)
+    public string GetLoginUrl(string state, string? prompt = "select_account")
     {
-        return _gitHubAuthService.GetAuthorizationUrl(state);
+        return _gitHubAuthService.GetAuthorizationUrl(state, prompt);
     }
 
     public async Task<AuthResultDto> HandleCallbackAsync(string code, CancellationToken cancellationToken = default)

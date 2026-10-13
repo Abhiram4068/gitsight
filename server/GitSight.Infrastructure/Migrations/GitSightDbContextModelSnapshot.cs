@@ -398,10 +398,15 @@ namespace GitSight.Infrastructure.Migrations
                     b.Property<string>("SuggestedRemovedCode")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<Guid>("TrackedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TrackedByUserId");
 
                     b.ToTable("TrackedIssues");
                 });
@@ -489,6 +494,17 @@ namespace GitSight.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("PrInsight");
+                });
+
+            modelBuilder.Entity("GitSight.Domain.Entities.TrackedIssue", b =>
+                {
+                    b.HasOne("GitSight.Domain.Entities.User", "TrackedByUser")
+                        .WithMany()
+                        .HasForeignKey("TrackedByUserId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("TrackedByUser");
                 });
 
             modelBuilder.Entity("GitSight.Domain.Entities.AiReviewSession", b =>

@@ -142,14 +142,14 @@ export default function PullRequests() {
         </div>
 
         {/* Right side controls: Repo selector and refresh */}
-        <div className="flex items-center space-x-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {repositories.length > 0 && (
             <div className="flex items-center space-x-1.5">
               <label className="text-xs text-gray-500 font-medium">Repo:</label>
               <select
                 value={selectedRepo}
                 onChange={(e) => handleRepoChange(e.target.value)}
-                className="text-xs border border-gray-300 bg-white px-2.5 py-1.5 text-gray-800 focus:outline-none focus:border-gray-500 cursor-pointer max-w-[200px] truncate"
+                className="text-xs border border-gray-300 bg-white px-2.5 py-1.5 text-gray-800 focus:outline-none focus:border-gray-500 cursor-pointer max-w-[160px] sm:max-w-[200px] truncate"
               >
                 {repositories.map((r) => {
                   const val = r.fullName || r.name;
@@ -173,12 +173,13 @@ export default function PullRequests() {
             <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
+
       </div>
 
       {/* Controls Bar: Status Filter Tabs & Search Bar */}
-      <div className="flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
         {/* Status Tabs: All, Open, Merged, Closed */}
-        <div className="flex items-center space-x-1 bg-white p-0.5 border border-gray-300 rounded">
+        <div className="flex flex-wrap items-center gap-1 bg-white p-0.5 border border-gray-300 rounded">
           <button
             onClick={() => handleStatusFilterChange('all')}
             className={`px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer ${
@@ -421,7 +422,7 @@ export default function PullRequests() {
         </div>
 
         {/* Stable Pagination Footer enclosed in the card so it never jerks */}
-        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex items-center justify-between text-xs text-gray-600 select-none">
+        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 select-none">
           <div className="flex items-center space-x-1.5">
             <span>
               Showing <span className="font-semibold text-gray-900">{totalRecords === 0 ? 0 : startIndex + 1}</span> to{' '}

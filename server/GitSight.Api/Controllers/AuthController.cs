@@ -25,10 +25,13 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("login")]
-    public IActionResult Login()
+    public IActionResult Login([FromQuery] string? prompt = "select_account")
     {
+        // Generate a unique value to identify this OAuth login request.
         var state = Guid.NewGuid().ToString("N");
-        var authUrl = _authService.GetLoginUrl(state);
+        // Build the GitHub OAuth authorization URL with prompt=select_account to let user choose or switch accounts.
+        var authUrl = _authService.GetLoginUrl(state, prompt);
+        // Makes the browser redirect to github oauth page
         return Redirect(authUrl);
     }
 
