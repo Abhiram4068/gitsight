@@ -138,7 +138,21 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
           <div className="bg-white p-6 shadow-2xl w-[400px] border border-gray-400 rounded-none">
             <h2 className="text-base font-bold text-gray-900 mb-3">Track Issues</h2>
             <p className="text-sm text-gray-800 mb-6 leading-relaxed">
-              You are about to track <span className="font-bold">{insights?.issues?.length || 0} issues</span> to manage them. You can see them on <span className="font-bold">Home &rarr; Issues</span>.
+              {(() => {
+                const trackableCount = insights?.issues?.filter((i) => !i.isIgnored && !i.IsIgnored)?.length || 0;
+                if (trackableCount > 0) {
+                  return (
+                    <>
+                      You are about to track <span className="font-bold">{trackableCount} {trackableCount === 1 ? 'issue' : 'issues'}</span> to manage them. You can see them on <span className="font-bold">Home &rarr; Issues</span>.
+                    </>
+                  );
+                }
+                return (
+                  <>
+                    All reported issues for this PR have been marked as ignored. There are no active issues to track.
+                  </>
+                );
+              })()}
             </p>
             <div className="flex justify-end space-x-4">
               <button 
@@ -150,6 +164,8 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
               <button 
                 onClick={async () => {
                   if (!insights?.id || !stats?.prNumber) return;
+                  const trackableCount = insights?.issues?.filter((i) => !i.isIgnored && !i.IsIgnored)?.length || 0;
+                  if (trackableCount === 0) return;
                   try {
                     setIsTracking(true);
                     await trackedIssuesApi.trackIssues({ 
@@ -164,9 +180,13 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
                     setIsTracking(false);
                   }
                 }}
-                disabled={isTracking}
+                disabled={isTracking || (insights?.issues?.filter((i) => !i.isIgnored && !i.IsIgnored)?.length || 0) === 0}
                 className={`px-5 py-2 text-white text-sm font-bold rounded-none ${
-                  isTracking ? 'bg-blue-400 cursor-wait' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
+                  isTracking
+                    ? 'bg-blue-400 cursor-wait'
+                    : (insights?.issues?.filter((i) => !i.isIgnored && !i.IsIgnored)?.length || 0) === 0
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'
                 }`}
               >
                 {isTracking ? (
@@ -346,7 +366,7 @@ export default function AiInsightsLayout() {
               <div className="px-4 sm:px-6 py-2 text-amber-800 text-xs font-medium flex items-center">
                 <i className="fa-solid fa-circle-exclamation mr-2 text-amber-500 text-sm"></i>
                 <div>
-                  This PR #{stats.prNumber} review was opened at {openedAt.toLocaleString()} and was reviewed at {reviewedAt.toLocaleString()} and has an overall confidence score of <span className="font-bold text-amber-900">{insights.overallConfidenceScore || 0}%</span>.
+                PR #{stats.prNumber} (reviewed at {reviewedAt.toLocaleString()}) &bull; Confidence: <span className="font-bold text-amber-900">{insights.overallConfidenceScore || 0}%</span>. Please validate reported issues (if any) before applying changes &bull; Suggestions can be safely ignored if not applicable.
                 </div>
               </div>
             </div>

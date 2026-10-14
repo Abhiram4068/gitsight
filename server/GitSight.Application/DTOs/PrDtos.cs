@@ -57,6 +57,8 @@ public class PostReviewCommentsRequestDto
 public class PullRequestDto
 {
     public Guid? Id { get; set; }
+    public Guid? RepositoryId { get; set; }
+    public long? GitHubRepoId { get; set; }
     public int PrNumber { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }

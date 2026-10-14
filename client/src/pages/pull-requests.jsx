@@ -7,7 +7,7 @@ import StatusBadge from '../components/StatusBadge';
 
 export default function PullRequests() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const repoFromUrl = searchParams.get('repo') || '';
+  const repoFromUrl = searchParams.get('repo') || searchParams.get('id') || searchParams.get('repositoryId') || '';
 
   // Repositories state
   const [repositories, setRepositories] = useState([]);
@@ -34,7 +34,10 @@ export default function PullRequests() {
         if (data && data.items && data.items.length > 0) {
           setRepositories(data.items);
           if (!selectedRepo) {
-            const initial = repoFromUrl || data.items[0].fullName || data.items[0].name;
+            const matched = data.items.find(
+              (r) => r.id === repoFromUrl || String(r.gitHubRepoId) === repoFromUrl || r.fullName === repoFromUrl || r.name === repoFromUrl
+            );
+            const initial = matched?.fullName || matched?.name || repoFromUrl || data.items[0].fullName || data.items[0].name;
             setSelectedRepo(initial);
           }
         }
@@ -47,11 +50,17 @@ export default function PullRequests() {
 
   // Update selectedRepo when URL changes
   useEffect(() => {
-    if (repoFromUrl && repoFromUrl !== selectedRepo) {
-      setSelectedRepo(repoFromUrl);
-      setCurrentPage(1);
+    if (repoFromUrl) {
+      const matched = repositories.find(
+        (r) => r.id === repoFromUrl || String(r.gitHubRepoId) === repoFromUrl || r.fullName === repoFromUrl || r.name === repoFromUrl
+      );
+      const target = matched?.fullName || matched?.name || repoFromUrl;
+      if (target !== selectedRepo) {
+        setSelectedRepo(target);
+        setCurrentPage(1);
+      }
     }
-  }, [repoFromUrl]);
+  }, [repoFromUrl, repositories]);
 
   // Fetch Pull Requests
   const fetchPullRequests = useCallback(async (isRefresh = false) => {

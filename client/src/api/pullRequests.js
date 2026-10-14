@@ -74,6 +74,11 @@ export const pullRequestsApi = {
     });
     return response.data;
   },
+
+  toggleIssueIgnore: async (issueId) => {
+    const response = await axiosClient.patch(`/api/trackedissues/issues/${issueId}/toggle-ignore`);
+    return response.data;
+  },
 };
 
 export default pullRequestsApi;

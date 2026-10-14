@@ -110,4 +110,17 @@ public class TrackedIssuesController : ControllerBase
         }
         return Ok(response);
     }
+
+    [HttpPatch("issues/{issueId:guid}/toggle-ignore")]
+    [HttpPost("issues/{issueId:guid}/toggle-ignore")]
+    public async Task<ActionResult<ApiResponse<bool>>> ToggleIssueIgnore(Guid issueId)
+    {
+        var response = await _trackedIssueService.ToggleIssueIgnoreAsync(issueId);
+        if (!response.Success)
+        {
+            if (response.StatusCode == 404) return NotFound(response);
+            return BadRequest(response);
+        }
+        return Ok(response);
+    }
 }

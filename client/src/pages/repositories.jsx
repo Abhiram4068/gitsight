@@ -176,7 +176,7 @@ export default function Repositories() {
         {/* Scrollable table container */}
         <div className="overflow-x-auto overflow-y-auto max-h-[460px] min-h-[380px]">
           <table className="w-full text-left border-collapse bg-white text-sm">
-            <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-xs">
+            <thead className="sticky top-0 z-10 bg-gray-100 border-b border-gray-200 text-gray-600 font-semibold select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-xs">
               <tr>
                 <th className="py-2.5 px-3">Repository Name</th>
                 <th className="py-2.5 px-3">Type</th>

@@ -42,7 +42,7 @@ builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<Gi
 // Register HttpClients & Infrastructure Services
 builder.Services.AddHttpClient<IGitHubAuthService, GitHubAuthService>();
 builder.Services.AddHttpClient<IGitHubService, GitHubService>();
-builder.Services.AddHttpClient<IAiReviewService, GeminiService>(client => 
+builder.Services.AddHttpClient<IAiReviewService, PythonReviewService>(client => 
 {
     client.Timeout = TimeSpan.FromMinutes(5);
 });
@@ -60,6 +60,7 @@ builder.Services.AddScoped<IPullRequestService, PullRequestService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITrackedIssueService, TrackedIssueService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 // Register FluentValidation Validators
 builder.Services.AddValidatorsFromAssemblyContaining<MergePrRequestValidator>();

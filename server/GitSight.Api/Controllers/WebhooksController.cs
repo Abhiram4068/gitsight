@@ -14,18 +14,18 @@ public class WebhooksController : ControllerBase
 {
     private readonly IApplicationDbContext _context;
     private readonly IGitHubService _gitHubService;
-    private readonly IAiReviewService _geminiService;
+    private readonly IAiReviewService _aiReviewService;
     private readonly ILogger<WebhooksController> _logger;
 
     public WebhooksController(
         IApplicationDbContext context,
         IGitHubService gitHubService,
-        IAiReviewService geminiService,
+        IAiReviewService aiReviewService,
         ILogger<WebhooksController> logger)
     {
         _context = context;
         _gitHubService = gitHubService;
-        _geminiService = geminiService;
+        _aiReviewService = aiReviewService;
         _logger = logger;
     }
 
@@ -79,8 +79,8 @@ public class WebhooksController : ControllerBase
         // 1. Fetch diff from GitHub
         var diff = await _gitHubService.GetPullRequestDiffAsync(repo.User.AccessToken, owner, repoName, prNumber);
 
-        // 2. Analyze diff using Gemini
-        var aiResult = await _geminiService.AnalyzeDiffAsync(diff, prTitle, prBody);
+        // 2. Analyze diff using AI Review Service
+        var aiResult = await _aiReviewService.AnalyzeDiffAsync(diff, prTitle, prBody);
 
         // 3. Save or update PrInsight
         var fullRepoName = $"{owner}/{repoName}";

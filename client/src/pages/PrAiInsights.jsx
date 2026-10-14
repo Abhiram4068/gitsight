@@ -97,6 +97,7 @@ export default function PrAiInsights() {
   const [insights, setInsights] = useState(null);
   const [activeModal, setActiveModal] = useState(null);
   const [ignoredIssues, setIgnoredIssues] = useState(new Set());
+  const [togglingIgnoreId, setTogglingIgnoreId] = useState(null);
   const [postingIssueId, setPostingIssueId] = useState(null);
   const [postedIssues, setPostedIssues] = useState(new Set());
   const [postErrors, setPostErrors] = useState({});
@@ -162,16 +163,73 @@ export default function PrAiInsights() {
     }
   };
 
-  const toggleIgnore = (id) => {
+  const toggleIgnore = async (id) => {
+    const willBeIgnored = !ignoredIssues.has(id);
+
+    // Optimistic UI update
     setIgnoredIssues((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
+      if (willBeIgnored) {
         next.add(id);
+      } else {
+        next.delete(id);
       }
       return next;
     });
+
+    try {
+      setTogglingIgnoreId(id);
+      const res = await pullRequestsApi.toggleIssueIgnore(id);
+      const isActuallyIgnored = res?.data !== undefined ? Boolean(res.data) : willBeIgnored;
+
+      setIgnoredIssues((prev) => {
+        const next = new Set(prev);
+        if (isActuallyIgnored) {
+          next.add(id);
+        } else {
+          next.delete(id);
+        }
+        return next;
+      });
+
+      // Update issue object inside insights state
+      setInsights((prev) => {
+        if (!prev || !prev.issues) return prev;
+        return {
+          ...prev,
+          issues: prev.issues.map((i) =>
+            i.id === id ? { ...i, isIgnored: isActuallyIgnored } : i
+          ),
+        };
+      });
+
+      setToastNotification({
+        type: "success",
+        message: isActuallyIgnored
+          ? "Issue ignored and excluded from tracking."
+          : "Issue restored to active list.",
+      });
+      setTimeout(() => setToastNotification(null), 3000);
+    } catch (err) {
+      console.error("Failed to toggle ignore status:", err);
+      // Revert optimistic update
+      setIgnoredIssues((prev) => {
+        const next = new Set(prev);
+        if (willBeIgnored) {
+          next.delete(id);
+        } else {
+          next.add(id);
+        }
+        return next;
+      });
+      setToastNotification({
+        type: "error",
+        message: "Failed to update ignore status. Please try again.",
+      });
+      setTimeout(() => setToastNotification(null), 4000);
+    } finally {
+      setTogglingIgnoreId(null);
+    }
   };
 
   const handlePostToGitHub = async (thread) => {
@@ -231,7 +289,7 @@ export default function PrAiInsights() {
     fetchInsights();
   }, [repoParam, prNumberParam]);
 
-  // Synchronize posted issues from database API response (isCommented flag)
+  // Synchronize posted and ignored issues from database API response
   useEffect(() => {
     if (insights?.issues) {
       const alreadyCommentedIds = new Set(
@@ -240,6 +298,13 @@ export default function PrAiInsights() {
           .map((i) => i.id)
       );
       setPostedIssues((prev) => new Set([...prev, ...alreadyCommentedIds]));
+
+      const alreadyIgnoredIds = new Set(
+        insights.issues
+          .filter((i) => i.isIgnored || i.IsIgnored)
+          .map((i) => i.id)
+      );
+      setIgnoredIssues((prev) => new Set([...prev, ...alreadyIgnoredIds]));
     }
   }, [insights]);
 
@@ -396,11 +461,16 @@ export default function PrAiInsights() {
                       {/* Minimalist Ignore Toggle */}
                       {!isFromTracked && (
                         <button
+                          disabled={togglingIgnoreId === thread.id}
                           onClick={() => toggleIgnore(thread.id)}
-                          className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-[11px] font-medium border cursor-pointer transition-all shadow-sm ${
+                          className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-[11px] font-medium border cursor-pointer transition-all shadow-sm ${
+                            togglingIgnoreId === thread.id
+                              ? "opacity-60 cursor-not-allowed"
+                              : ""
+                          } ${
                             ignoredIssues.has(thread.id)
-                              ? "bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100"
-                              : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100"
+                              : "bg-rose-50 text-rose-700 border-rose-300 hover:bg-rose-100"
                           }`}
                           title={
                             ignoredIssues.has(thread.id)
@@ -409,7 +479,13 @@ export default function PrAiInsights() {
                           }
                         >
                           <i
-                            className={`fa-solid ${ignoredIssues.has(thread.id) ? "fa-arrow-rotate-left" : "fa-ban text-gray-400"}`}
+                            className={`fa-solid ${
+                              togglingIgnoreId === thread.id
+                                ? "fa-spinner fa-spin text-gray-500"
+                                : ignoredIssues.has(thread.id)
+                                  ? "fa-arrow-rotate-left text-emerald-600"
+                                  : "fa-ban text-rose-500"
+                            }`}
                           ></i>
                           <span>
                             {ignoredIssues.has(thread.id)
@@ -494,9 +570,6 @@ export default function PrAiInsights() {
                       <div className="border border-gray-200 mt-3 font-mono text-xs rounded overflow-hidden">
                         <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 text-[11px] text-gray-600 font-semibold flex justify-between items-center">
                           <span>Suggested change</span>
-                          <button className="text-blue-600 hover:text-blue-700 font-sans font-medium cursor-pointer">
-                            Export Suggestion
-                          </button>
                         </div>
                         <div className="bg-white">
                           {thread.suggestedRemovedCode && (
