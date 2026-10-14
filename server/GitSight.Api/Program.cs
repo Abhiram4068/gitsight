@@ -51,6 +51,7 @@ builder.Services.AddHttpClient<IAiReviewService, PythonReviewService>(client =>
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPullRequestRepository, PullRequestRepository>();
 builder.Services.AddScoped<ITrackedIssueRepository, TrackedIssueRepository>();
+builder.Services.AddScoped<IRuleRepository, RuleRepository>();
 
 
 // Register Application & Infrastructure Services
@@ -61,6 +62,7 @@ builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITrackedIssueService, TrackedIssueService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IRuleService, RuleService>();
 
 // Register FluentValidation Validators
 builder.Services.AddValidatorsFromAssemblyContaining<MergePrRequestValidator>();

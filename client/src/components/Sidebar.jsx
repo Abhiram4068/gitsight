@@ -113,8 +113,8 @@ export default function Sidebar({ isOpen, onClose }) {
             }
           >
             <i className="fa-solid fa-gears w-4 text-center"></i>{" "}
-            <span>Webhooks</span>
-          </NavLink>
+            <span>Webhooks</span> 
+          </NavLink>*/}
           <hr className="border-gray-200" />       
           <NavLink
             to="/review-rules"
@@ -130,6 +130,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <span>Configure Rules</span>
           </NavLink>
           <hr className="border-gray-200" /> 
+          {/*
           <NavLink
             to="/pipelines"
             className={({ isActive }) =>
@@ -141,8 +142,10 @@ export default function Sidebar({ isOpen, onClose }) {
             }
           >
             <i className="fa-solid fa-play w-4 text-center"></i>{" "}
+           
             <span>Pipelines</span>
           </NavLink>
+           
           <hr className="border-gray-200" />
           <NavLink
             to="/settings"

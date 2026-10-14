@@ -13,5 +13,7 @@ public interface IApplicationDbContext
     DbSet<AiReviewIssue> AiReviewIssues { get; }
     DbSet<PrInsight> PrInsights { get; }
     DbSet<TrackedIssue> TrackedIssues { get; }
+    DbSet<Rule> Rules { get; }
+    DbSet<RuleConfig> RuleConfigs { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

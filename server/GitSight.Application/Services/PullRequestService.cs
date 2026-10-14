@@ -18,6 +18,7 @@ public class PullRequestService : IPullRequestService
     private readonly IPullRequestRepository _repository;
     private readonly IGitHubService _gitHubService;
     private readonly IAiReviewService _aiReviewService;
+    private readonly IRuleService _ruleService;
     private readonly ILogger<PullRequestService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
 
@@ -25,12 +26,14 @@ public class PullRequestService : IPullRequestService
         IPullRequestRepository repository,
         IGitHubService gitHubService,
         IAiReviewService aiReviewService,
+        IRuleService ruleService,
         ILogger<PullRequestService> logger,
         IServiceScopeFactory scopeFactory)
     {
         _repository = repository;
         _gitHubService = gitHubService;
         _aiReviewService = aiReviewService;
+        _ruleService = ruleService;
         _logger = logger;
         _scopeFactory = scopeFactory;
     }
@@ -275,10 +278,24 @@ public class PullRequestService : IPullRequestService
         }
 
         _logger.LogInformation("Calling Python AI Review Service for PR #{PrNumber} with Diff length: {DiffLength}", prNumber, diff.Length);
+        List<string>? customRules = null;
+        try
+        {
+            customRules = await _ruleService.GetActiveRulePromptsForRepoAsync(fullRepoName);
+            if (customRules != null && customRules.Count > 0)
+            {
+                _logger.LogInformation("Loaded {Count} active custom rules for repo {Repo} to apply to PR #{PrNumber}", customRules.Count, fullRepoName, prNumber);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load custom rules for repository {Repo}. Proceeding with review without custom rules.", fullRepoName);
+        }
+
         GeminiReviewResultDto analysisDto;
         try
         {
-            analysisDto = await _aiReviewService.AnalyzeDiffAsync(diff, prDetails.Title, prDetails.Description);
+            analysisDto = await _aiReviewService.AnalyzeDiffAsync(diff, prDetails.Title, prDetails.Description, customRules);
         }
         catch (Exception ex)
         {

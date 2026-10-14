@@ -53,7 +53,7 @@ public class GeminiService : IAiReviewService
         _logger = logger;
     }
 
-    public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null)
+    public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null, List<string>? customRules = null)
     {
         _logger.LogInformation("Starting AI Diff analysis. PR Title: {PrTitle}, Diff length: {DiffLength}", prTitle, diffText.Length);
         

@@ -1,100 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import repositoryApi from "../api/repositories";
+import rulesApi from "../api/rules";
 
 export default function ReviewRules() {
   const [repositories, setRepositories] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingRules, setIsLoadingRules] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-
-  // Rules structured with enterprise-grade categories/options
-  const [rules, setRules] = useState([
-    {
-      id: "1",
-      displayName: "Ignore Test Secrets",
-      description:
-        "Allow fake or test API keys (e.g. sk_test_...) without triggering security alerts.",
-      isEnabled: false,
-    },
-    {
-      id: "2",
-      displayName: "Strict Security Policy",
-      description:
-        "Flag pull requests as High Risk instantly if any hardcoded password or token is detected.",
-      isEnabled: false,
-    },
-    {
-      id: "3",
-      displayName: "Ignore Whitespace & Formatting",
-      description:
-        "Suppress stylistic suggestions regarding code indentation, spacing, and formatting.",
-      isEnabled: false,
-    },
-    {
-      id: "4",
-      displayName: "Enforce Async / Await",
-      description:
-        "Flag legacy promise chains (.then/.catch) and recommend modern async/await patterns.",
-      isEnabled: false,
-    },
-    {
-      id: "5",
-      displayName: "Disallow Console Statements",
-      description:
-        "Flag any debugging console.log, console.warn, or console.error statements left in production code.",
-      isEnabled: false,
-    },
-    {
-      id: "6",
-      displayName: "Nitpicky Mode",
-      description:
-        "Enable maximum strictness to review and highlight every minor stylistic and naming convention deviation.",
-      isEnabled: false,
-    },
-    {
-      id: "7",
-      displayName: "Require Meaningful Naming",
-      description:
-        "Flag short, obscure, or overly generic variable and function names (e.g., data1, temp, x).",
-      isEnabled: false,
-    },
-    {
-      id: "8",
-      displayName: "Prevent Hardcoded Configs",
-      description:
-        "Enforce that API URLs, ports, and external endpoints are accessed via environment variables.",
-      isEnabled: false,
-    },
-    {
-      id: "9",
-      displayName: "Block Unresolved TODOs",
-      description:
-        "Flag code containing unresolved TODO, FIXME, or HACK comments left in the pull request.",
-      isEnabled: false,
-    },
-    {
-      id: "10",
-      displayName: "Strict Type Enforcement",
-      description:
-        "Flag implicit 'any' types and require well-defined TS interfaces or JSDoc types for all parameters.",
-      isEnabled: false,
-    },
-    {
-      id: "11",
-      displayName: "Accessibility (A11y) Checks",
-      description:
-        "Highlight missing alt attributes, missing ARIA roles, or poorly structured HTML semantic elements.",
-      isEnabled: false,
-    },
-    {
-      id: "12",
-      displayName: "Comprehensive Error Handling",
-      description:
-        "Ensure catch blocks do not silently swallow errors and properly handle or rethrow exceptions.",
-      isEnabled: false,
-    },
-  ]);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [rules, setRules] = useState([]);
+  const [savedRuleIds, setSavedRuleIds] = useState([]);
 
   useEffect(() => {
     fetchRepositories();
@@ -116,31 +34,84 @@ export default function ReviewRules() {
     }
   };
 
-  const handleRepoChange = (e) => {
+  const handleRepoChange = async (e) => {
     const repoFullName = e.target.value;
     setSelectedRepo(repoFullName);
-    // Reset rules or load repo-specific settings here
-    setRules(rules.map((r) => ({ ...r, isEnabled: false })));
+    setSaveSuccess(false);
+    setErrorMessage("");
+
+    if (!repoFullName) {
+      setRules([]);
+      setSavedRuleIds([]);
+      return;
+    }
+
+    setIsLoadingRules(true);
+    try {
+      const config = await rulesApi.getRepoRuleConfig(repoFullName);
+      if (config && config.rules) {
+        const selectedList = config.selectedRuleIds || [];
+        const selectedSet = new Set(selectedList);
+        setSavedRuleIds(selectedList);
+        const mapped = config.rules.map((rule) => ({
+          ...rule,
+          isEnabled: selectedSet.has(rule.id),
+        }));
+        setRules(mapped);
+      } else {
+        // Fallback: fetch all rules directly if config was empty
+        const allRules = await rulesApi.getAllRules();
+        setSavedRuleIds([]);
+        setRules(
+          (allRules || []).map((rule) => ({
+            ...rule,
+            isEnabled: false,
+          }))
+        );
+      }
+    } catch (error) {
+      console.error("Failed to fetch repo rule config", error);
+      setErrorMessage("Could not load rules for this repository. Please make sure database migrations are applied.");
+    } finally {
+      setIsLoadingRules(false);
+    }
   };
 
   const handleToggleRule = (ruleId) => {
     if (!selectedRepo) return;
-    setRules(
-      rules.map((rule) =>
-        rule.id === ruleId ? { ...rule, isEnabled: !rule.isEnabled } : rule,
-      ),
+    setRules((prev) =>
+      prev.map((rule) =>
+        rule.id === ruleId ? { ...rule, isEnabled: !rule.isEnabled } : rule
+      )
     );
+    setSaveSuccess(false);
   };
 
   const handleSaveRules = async () => {
     if (!selectedRepo) return;
+    const enabledRuleIds = rules.filter((r) => r.isEnabled).map((r) => r.id);
+
     setIsSaving(true);
+    setSaveSuccess(false);
+    setErrorMessage("");
+
     try {
-      await new Promise((resolve) => setTimeout(resolve, 800));
-      alert("Configuration saved successfully for " + selectedRepo);
+      const selectedRepoObj = repositories.find((r) => r.fullName === selectedRepo);
+
+      await rulesApi.applyRules({
+        repositoryId: selectedRepoObj?.id || null,
+        repositoryFullName: selectedRepo,
+        ruleIds: enabledRuleIds,
+      });
+
+      setSavedRuleIds(enabledRuleIds);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
     } catch (error) {
       console.error("Failed to save rules", error);
-      alert("Failed to save configuration.");
+      setErrorMessage(
+        error.response?.data?.message || "Failed to save configuration. Please try again."
+      );
     } finally {
       setIsSaving(false);
     }
@@ -169,32 +140,39 @@ export default function ReviewRules() {
             per-repository basis.
           </p>
         </div>
+      </div>
 
-        <div className="flex items-center space-x-2 shrink-0">
-          <button
-            onClick={handleSaveRules}
-            disabled={isSaving || !selectedRepo}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-sm transition-all flex items-center gap-1.5 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer shadow-sm"
-          >
-            {isSaving ? (
-              <>
-                <i className="fa-solid fa-circle-notch fa-spin text-[10px]"></i>{" "}
-                Saving configuration...
-              </>
+      {/* Banner Alerts */}
+      {saveSuccess && (
+        <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-md text-emerald-800 text-xs flex items-center gap-2">
+          <i className="fa-solid fa-circle-check text-emerald-600"></i>
+          <span>
+            {savedRuleIds.length > 0 ? (
+              <>Rules successfully applied to <strong>{selectedRepo}</strong>! They will be strictly enforced during subsequent PR reviews.</>
             ) : (
-              <>
-                <i className="fa-solid fa-floppy-disk text-[10px]"></i> Confirm & Apply Rules
-              </>
+              <>All custom rules have been removed from <strong>{selectedRepo}</strong>. Reviews will proceed with standard guidelines.</>
             )}
+          </span>
+        </div>
+      )}
+
+      {errorMessage && (
+        <div className="mt-3 p-3 bg-rose-50 border border-rose-200 rounded-md text-rose-800 text-xs flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <i className="fa-solid fa-triangle-exclamation text-rose-600"></i>
+            <span>{errorMessage}</span>
+          </div>
+          <button onClick={() => setErrorMessage("")} className="text-rose-500 hover:text-rose-700">
+            <i className="fa-solid fa-xmark"></i>
           </button>
         </div>
-      </div>
+      )}
 
       <div className="mt-3 overflow-hidden">
         {/* Scope Selector Bar */}
         <div className="p-5 border-b border-gray-200 bg-gray-50/75 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="w-full max-w-lg">
-            <label className="block text-xs font-bold  tracking-wider text-gray-700 mb-1.5 text-left">
+            <label className="block text-xs font-bold tracking-wider text-gray-700 mb-1.5 text-left">
               Select a repository to view and manage its custom rules:
             </label>
             <div className="relative">
@@ -225,65 +203,95 @@ export default function ReviewRules() {
 
         {/* Content Area */}
         {selectedRepo ? (
-          <div className="p-6 space-y-6">
-
-            {/* Two Column Radio-Style Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {rules.map((rule) => (
-                <div
-                  key={rule.id}
-                  className="p-3.5 text-left flex items-start gap-3"
-                >
-                  {/* Radio Button Indicator */}
-                  <div className="flex-shrink-0 mt-0.5">
-                    <div
-                      onClick={() => handleToggleRule(rule.id)}
-                      className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors cursor-pointer ${
-                        rule.isEnabled
-                          ? "border-blue-600 bg-blue-600 text-white"
-                          : "border-gray-300 bg-white hover:border-gray-400"
-                      }`}
-                    >
-                      {rule.isEnabled && (
-                        <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Rule Details (Left-Aligned, Small text) */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-xs font-semibold text-gray-900">
-                      {rule.displayName}
-                    </h3>
-                    <p className="text-xs mt-0.5 leading-relaxed text-gray-500">
-                      {rule.description}
-                    </p>
-                  </div>
-                </div>
-              ))}
+          isLoadingRules ? (
+            <div className="p-16 text-center text-gray-500 flex flex-col items-center justify-center">
+              <i className="fa-solid fa-circle-notch fa-spin text-2xl text-blue-600 mb-2"></i>
+              <p className="text-xs font-medium">Loading rules for {selectedRepo}...</p>
             </div>
-
-            {/* Action Bar */}
-            <div className="pt-4 border-t border-gray-200 flex items-center justify-between mt-6">
-              <p className="text-[11px] text-gray-500 text-left">
-                Changes will apply to subsequent pull request scans on{" "}
-                <span className="font-semibold text-gray-700">
-                  {selectedRepo}
-                </span>
-                .
+          ) : rules.length === 0 ? (
+            <div className="p-12 text-center text-gray-500">
+              <i className="fa-solid fa-list-check text-2xl text-gray-400 mb-2"></i>
+              <p className="text-xs font-semibold text-gray-800">No Rules Found in Database</p>
+              <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+                Please run your EF migration and seed the rules using the SQL script provided.
               </p>
             </div>
-          </div>
+          ) : (
+            <div className="p-6 space-y-6">
+              {/* Two Column Radio-Style Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {rules.map((rule) => (
+                  <div
+                    key={rule.id}
+                    onClick={() => handleToggleRule(rule.id)}
+                    className={`p-3.5 text-left flex items-start gap-3  transition-all cursor-pointer select-none ${
+                      rule.isEnabled
+                        ? ""
+                        : ""
+                    }`}
+                  >
+                    {/* Radio Button Indicator */}
+                    <div className="flex-shrink-0 mt-0.5">
+                      <div
+                        className={`w-4 h-4 rounded-full border flex items-center justify-center transition-colors ${
+                          rule.isEnabled
+                            ? "border-blue-600 bg-blue-600 text-white"
+                            : "border-gray-300 bg-white"
+                        }`}
+                      >
+                        {rule.isEnabled && (
+                          <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Rule Details */}
+                    <div className="flex-1 min-w-0">
+                      <h3 className={`text-xs font-semibold ${rule.isEnabled ? "text-blue-900" : "text-gray-900"}`}>
+                        {rule.displayName}
+                      </h3>
+                      <p className="text-xs mt-0.5 leading-relaxed text-gray-500">
+                        {rule.description}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Action Bar */}
+              <div className="pt-4 border-t border-gray-200 flex items-center justify-between mt-6">
+                <p className="text-[11px] text-gray-500 text-left">
+                  Changes will apply to subsequent pull request scans on{" "}
+                  <span className="font-semibold text-gray-700">
+                    {selectedRepo}
+                  </span>
+                  .
+                </p>
+                <button
+                  onClick={handleSaveRules}
+                  disabled={isSaving || !selectedRepo || (!rules.some((r) => r.isEnabled) && savedRuleIds.length === 0)}
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-sm transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-600 cursor-pointer shadow-sm"
+                >
+                  {isSaving ? (
+                    <>
+                      <i className="fa-solid fa-circle-notch fa-spin text-[10px]"></i> Saving...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-floppy-disk text-[10px]"></i> Confirm & Apply Rules
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          )
         ) : (
           <div className="p-16 text-center text-gray-400 flex flex-col items-center justify-center">
-            <div className="w-12 h-12 flex items-center  mb-3 text-gray-400 text-lg ">
-            </div>
             <p className="text-xs font-semibold text-gray-700">
               No Repository Selected
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              Please choose a target repository from the dropdown above to
-              manage rule configurations.
+              Please choose a target repository from the dropdown above to manage rule configurations.
             </p>
           </div>
         )}
