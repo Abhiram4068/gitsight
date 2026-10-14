@@ -19,6 +19,4 @@ public class PullRequest
     public Repository Repository { get; set; } = null!;
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }
-
-    public ICollection<ReviewComment> Comments { get; set; } = new List<ReviewComment>();
 }

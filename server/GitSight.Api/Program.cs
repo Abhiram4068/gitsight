@@ -10,8 +10,23 @@ using GitSight.Infrastructure.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Serilog;
+using GitSight.Api.Logging;
 
 var builder = WebApplication.CreateBuilder(args);
+
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("System", Serilog.Events.LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", Serilog.Events.LogEventLevel.Information)
+    .Enrich.FromLogContext()
+    .Enrich.With(new IstTimestampEnricher())
+    .WriteTo.Console(outputTemplate: "[{IstTimestamp} IST] [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File("logs/gitsight-log-.txt", rollingInterval: RollingInterval.Day, outputTemplate: "[{IstTimestamp} IST] [{Level:u3}] [{SourceContext}] {Message:lj}{NewLine}{Exception}")
+    .CreateLogger();
+
+builder.Host.UseSerilog();
 
 // Add Controllers and OpenAPI
 builder.Services.AddControllers();
@@ -20,7 +35,7 @@ builder.Services.AddHttpContextAccessor();
 
 // Configure EF Core with SQL Server 2022
 builder.Services.AddDbContext<GitSightDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<GitSightDbContext>());
 
@@ -34,13 +49,19 @@ builder.Services.AddHttpClient<IAiReviewService, GeminiService>(client =>
 
 // Register Repositories (Infrastructure)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<IPullRequestRepository, PullRequestRepository>();
+builder.Services.AddScoped<ITrackedIssueRepository, TrackedIssueRepository>();
+builder.Services.AddScoped<IWebhookRepository, WebhookRepository>();
 
 
 // Register Application & Infrastructure Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRepositoryService, RepositoryService>();
+builder.Services.AddScoped<IPullRequestService, PullRequestService>();
+builder.Services.AddScoped<IWebhookService, WebhookService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<ITrackedIssueService, TrackedIssueService>();
 
 // Register FluentValidation Validators
 builder.Services.AddValidatorsFromAssemblyContaining<MergePrRequestValidator>();
@@ -70,7 +91,10 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClient", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        var frontendUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+        var allowedOrigins = frontendUrl.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(o => o.Trim()).ToArray();
+        
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

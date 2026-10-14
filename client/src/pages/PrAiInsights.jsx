@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { formatDateTime } from "../utils/datetimeFormatter";
+import { generateExcelReport, generateTxtReport, generatePdfReport } from "../utils/exportUtils";
 
 const DashboardCards = ({ insights }) => (
   <div className="flex flex-wrap items-center justify-center text-center gap-x-10 gap-y-4 pb-2">
@@ -67,10 +69,11 @@ const DashboardCards = ({ insights }) => (
   </div>
 );
 
-import { useLocation, useSearchParams } from "react-router-dom";
+import { useLocation, useSearchParams, useOutletContext } from "react-router-dom";
 import { pullRequestsApi } from "../api/pullRequests";
 
 export default function PrAiInsights() {
+  const { setInsights: setGlobalInsights, stats } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
   const [loadingPhrase] = useState(() => {
     const phrases = ["Analyzing...", "Processing...", "Working...", "Inspecting...", "Reviewing..."];
@@ -79,11 +82,15 @@ export default function PrAiInsights() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [insights, setInsights] = useState(null);
   const [activeModal, setActiveModal] = useState(null);
+  const [ignoredIssues, setIgnoredIssues] = useState(new Set());
+  const hasFetched = useRef(false);
   const location = useLocation();
   const [searchParams] = useSearchParams();
 
   const repoParam = location.state?.repoParam || searchParams.get("repo");
   const prNumberParam = location.state?.prNumberParam || searchParams.get("pr");
+  const issueIdParam = searchParams.get("issue");
+  const isFromTracked = searchParams.get("from") === "tracked";
 
   const modalConfig = {
     export: {
@@ -91,18 +98,6 @@ export default function PrAiInsights() {
       message: "Are you sure you want to export this review report?",
       confirmText: "Export",
       confirmColor: "bg-blue-600 hover:bg-blue-700",
-    },
-    critical: {
-      title: "Mark as Critical",
-      message: "Mark this entire review as Critical?",
-      confirmText: "Mark Critical",
-      confirmColor: "bg-red-600 hover:bg-red-700",
-    },
-    flag: {
-      title: "Flag Review",
-      message: "Flag this review for further investigation?",
-      confirmText: "Flag",
-      confirmColor: "bg-amber-600 hover:bg-amber-700",
     },
   };
 
@@ -117,6 +112,7 @@ export default function PrAiInsights() {
         prNumber: prNumberParam,
       });
       setInsights(data);
+      setGlobalInsights(data);
       setIsLoading(false);
     } catch (error) {
       if (error.response?.status === 404) {
@@ -140,6 +136,7 @@ export default function PrAiInsights() {
         prNumber: prNumberParam,
       });
       setInsights(data);
+      setGlobalInsights(data);
     } catch (error) {
       console.error("Failed to generate PR insights:", error);
     } finally {
@@ -147,9 +144,47 @@ export default function PrAiInsights() {
     }
   };
 
+  const toggleIgnore = (id) => {
+    setIgnoredIssues((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   useEffect(() => {
+    if (!repoParam || !prNumberParam) return;
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     fetchInsights();
   }, [repoParam, prNumberParam]);
+
+  // Handle scrolling to specific issue
+  useEffect(() => {
+    if (insights && issueIdParam) {
+      // Slight delay to ensure the DOM is painted
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`issue-${issueIdParam}`);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          
+          // Flash effect
+          const card = element.querySelector('.bg-white');
+          if (card) {
+            card.classList.add('ring-2', 'ring-blue-500', 'ring-offset-2');
+            setTimeout(() => {
+              card.classList.remove('ring-2', 'ring-blue-500', 'ring-offset-2');
+            }, 2000);
+          }
+        }
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [insights, issueIdParam]);
 
   if (isLoading) {
     return (
@@ -178,10 +213,12 @@ export default function PrAiInsights() {
 
   return (
     <div className="space-y-6">
+
+
       {/* Page Title */}
       <div className="pb-2">
         <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-          AI Code Review Analysis
+          Overview
         </h1>
       </div>
 
@@ -193,84 +230,116 @@ export default function PrAiInsights() {
           Inline Code Reviews ({reviewThreads.length})
         </h2>
         <div className="flex items-center space-x-4 text-xs font-medium">
-          <button
-            onClick={() => setActiveModal("export")}
-            className="text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
-          >
-            Export
-          </button>
-          <button
-            onClick={() => setActiveModal("critical")}
-            className="text-red-500 hover:text-red-700 transition-colors cursor-pointer"
-          >
-            Mark as Critical
-          </button>
-          <button
-            onClick={() => setActiveModal("flag")}
-            className="text-amber-600 hover:text-amber-800 transition-colors cursor-pointer"
-          >
-            Flag
-          </button>
+          {reviewThreads.length > 0 && (
+            <button
+              onClick={() => setActiveModal("export")}
+              className="text-gray-500 hover:text-gray-800 transition-colors cursor-pointer"
+            >
+              Export Review
+            </button>
+          )}
         </div>
       </div>
 
-      {/* Tree Line Wrapper */}
-      <div className="relative pl-6">
-        {/* Continuous Trunk Line connecting all issues */}
-        <div className="absolute left-[11px] top-3 bottom-6 w-0.5 bg-emerald-500"></div>
+      {reviewThreads.length === 0 ? (
+        <div className=" p-10 text-center flex flex-col items-center justify-center space-y-4">
+          <div className="w-14 h-14 flex items-center justify-center text-emerald-600 ">
+            <i className="fa-solid fa-check text-2xl"></i>
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-emerald-900 tracking-tight">0 Potential Issues Found.</h3>
+            <p className="text-sm  mt-1 max-w-md mx-auto leading-relaxed">
+              The AI code review completed successfully and didn't flag any security vulnerabilities, syntax errors, or major code smells. Great job!
+            </p>
+          </div>
+        </div>
+      ) : (
+        /* Tree Line Wrapper */
+        <div className="relative pl-6">
+          {/* Continuous Trunk Line connecting all issues */}
+          <div className="absolute left-[11px] top-3 bottom-6 w-0.5 bg-emerald-500"></div>
 
-        <div className="space-y-10">
-          {reviewThreads.map((thread) => (
-            <div key={thread.id} className="relative group">
+          <div className="space-y-10">
+            {reviewThreads.map((thread) => (
+            <div key={thread.id} id={`issue-${thread.id}`} className="relative group">
               {/* Horizontal Branch Line pointing from the main trunk to the card */}
               <div className="absolute -left-[12px] top-5 w-3 h-0.5 bg-emerald-500"></div>
 
               {/* Review Card */}
-              <div className="bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm">
+              <div className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-all duration-500 ${ignoredIssues.has(thread.id) ? 'opacity-50 grayscale' : ''}`}>
                 {/* Diff Context Header */}
                 <div className="bg-gray-100/70 px-3 py-2 border-b border-gray-200 flex items-center justify-between font-mono text-xs text-gray-600">
                   <span className="font-medium text-gray-900">
                     {thread.filePath}
                   </span>
-                  <span className="text-gray-500">
-                    Lines +{thread.startLine} to +{thread.endLine}
-                  </span>
+                  <div className="flex items-center space-x-4">
+                    <span className="text-gray-500">
+                      Lines +{thread.startLine} to +{thread.endLine}
+                    </span>
+                    {/* Minimalist Ignore Toggle */}
+                    {!isFromTracked && (
+                      <button 
+                        onClick={() => toggleIgnore(thread.id)}
+                        className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-sm text-[11px] font-medium border cursor-pointer transition-all shadow-sm ${
+                          ignoredIssues.has(thread.id)
+                          ? 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                          : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:text-gray-900'
+                        }`}
+                        title={ignoredIssues.has(thread.id) ? "Restore this issue" : "Ignore this issue"}
+                      >
+                        <i className={`fa-solid ${ignoredIssues.has(thread.id) ? 'fa-arrow-rotate-left' : 'fa-ban text-gray-400'}`}></i>
+                        <span>{ignoredIssues.has(thread.id) ? 'Restore' : 'Ignore'}</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Code Snippet Block */}
-                {thread.codeLines && (
-                  <div className="bg-gray-50 border-b border-gray-200 font-mono text-xs overflow-x-auto">
-                    {thread.codeLines.map((line, idx) => (
-                      <div
-                        key={idx}
-                        className="flex items-center px-3 py-1 bg-emerald-50/50 text-emerald-900"
-                      >
-                        <span className="w-8 text-right pr-3 text-gray-400 select-none text-[11px]">
-                          {line.num}
-                        </span>
-                        <span className="text-emerald-600 font-semibold select-none mr-2">
-                          +
-                        </span>
-                        <pre className="whitespace-pre">{line.text}</pre>
+                {(() => {
+                  const computedCodeLines = thread.codeLines || (thread.suggestedRemovedCode ? thread.suggestedRemovedCode.split('\n').map((text, i) => ({ num: thread.startLine + i, text })) : null);
+                  return computedCodeLines && (
+                    <div className="border-b border-gray-200">
+                      <div className="bg-gray-100 px-3 py-1.5 border-b border-gray-200 text-[11px] text-gray-600 font-semibold flex justify-between items-center">
+                        <span className=" tracking-wider">Current Code</span>
                       </div>
-                    ))}
-                  </div>
-                )}
+                      <div className="bg-gray-50 font-mono text-xs overflow-x-auto">
+                        {computedCodeLines.map((line, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center px-3 py-1 bg-emerald-50/50 text-emerald-900"
+                          >
+                            <span className="w-8 text-right pr-3 text-gray-400 select-none text-[11px]">
+                              {line.num}
+                            </span>
+                            <span className="text-emerald-600 font-semibold select-none mr-2">
+                              +
+                            </span>
+                            <pre className="whitespace-pre">{line.text}</pre>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* Comment Thread */}
                 <div className="p-4 space-y-3">
-                  <div className="flex items-center space-x-2 text-xs">
+                  <div className="flex items-center justify-between text-xs">
                     <span className="font-semibold text-gray-900">
-                      {thread.author || "GitSight AI"}
+                      {thread.author || "GitSight"}
                     </span>
-                    <span className="bg-blue-100 text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">
-                      {thread.issueType}
-                    </span>
-                    <span
-                      className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${thread.severity?.toLowerCase() === "high" || thread.severity?.toLowerCase() === "critical" ? "bg-red-100 text-red-700" : thread.severity?.toLowerCase() === "medium" || thread.severity?.toLowerCase() === "warning" ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-700"}`}
-                    >
-                      {thread.severity}
-                    </span>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-500">Type:</span>
+                      <span className="text-blue-700 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase">
+                        {thread.issueType}
+                      </span>
+                      <span className="text-gray-500 ml-1">Severity:</span>
+                      <span
+                        className={`text-[10px] px-1.5 py-0.5 rounded font-bold uppercase ${thread.severity?.toLowerCase() === "high" || thread.severity?.toLowerCase() === "critical" ? " text-red-700" : thread.severity?.toLowerCase() === "medium" || thread.severity?.toLowerCase() === "warning" ? "text-amber-700" : " text-gray-700"}`}
+                      >
+                        {thread.severity}
+                      </span>
+                    </div>
                   </div>
 
                   <p className="text-xs text-gray-700 leading-relaxed">
@@ -315,8 +384,9 @@ export default function PrAiInsights() {
               </div>
             </div>
           ))}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Custom Modal */}
       {activeModal && modalConfig[activeModal] && (
@@ -328,20 +398,49 @@ export default function PrAiInsights() {
             <p className="text-sm text-gray-600 mb-6">
               {modalConfig[activeModal].message}
             </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setActiveModal(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => setActiveModal(null)}
-                className={`px-4 py-2 text-sm font-medium text-white rounded transition-colors cursor-pointer ${modalConfig[activeModal].confirmColor}`}
-              >
-                {modalConfig[activeModal].confirmText}
-              </button>
-            </div>
+            {activeModal === "export" ? (
+              <div className="flex flex-col space-y-3">
+                <button
+                  onClick={() => { generateTxtReport(insights, prNumberParam); setActiveModal(null); }}
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-gray-600 hover:bg-gray-700 rounded transition-colors text-center cursor-pointer shadow-sm"
+                >
+                  <i className="fa-regular fa-file-lines mr-2"></i> Download as TXT
+                </button>
+                <button
+                  onClick={() => { generateExcelReport(insights, prNumberParam); setActiveModal(null); }}
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 rounded transition-colors text-center cursor-pointer shadow-sm"
+                >
+                  <i className="fa-regular fa-file-excel mr-2"></i> Download as Excel
+                </button>
+                <button
+                  onClick={() => { generatePdfReport(insights, prNumberParam); setActiveModal(null); }}
+                  className="px-4 py-2.5 text-sm font-medium text-white bg-rose-600 hover:bg-rose-700 rounded transition-colors text-center cursor-pointer shadow-sm"
+                >
+                  <i className="fa-regular fa-file-pdf mr-2"></i> Download as PDF
+                </button>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 mt-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors text-center cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => setActiveModal(null)}
+                  className={`px-4 py-2 text-sm font-medium text-white rounded transition-colors cursor-pointer ${modalConfig[activeModal].confirmColor}`}
+                >
+                  {modalConfig[activeModal].confirmText}
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}

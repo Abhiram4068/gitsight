@@ -111,16 +111,15 @@ export default function Repositories() {
   return (
     <div>
       {/* Header section */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 pb-3 border-b border-gray-200 gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-gray-200 gap-3">
         <div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => navigate('/')}
-              className="text-xs hover:text-gray-600 font-medium flex items-center space-x-1 cursor-pointer"
-            >
-              <span>&larr; Dashboard</span>
-            </button>
-          </div>
+          <nav className="flex items-center space-x-1.5 text-xs text-gray-500 mb-1">
+            <Link to="/" className="hover:underline hover:text-gray-900 cursor-pointer transition-colors">
+              Dashboard
+            </Link>
+            <span className="text-gray-400">&gt;</span>
+            <span className="font-bold text-gray-900">Repositories</span>
+          </nav>
 
           <h1 className="text-lg font-bold text-gray-900 mt-1 flex items-center space-x-2">
             <span className="font-bold text-blue-700">Repositories</span>
@@ -145,7 +144,7 @@ export default function Repositories() {
       </div>
 
       {/* Controls Bar: Type Filter Tabs & Search Bar */}
-      <div className="mb-4 flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700">
+      <div className="flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
         {/* Type Tabs: All, Public, Private */}
         <div className="flex items-center space-x-1 bg-white p-0.5 border border-gray-300 rounded">
           {['All', 'Public', 'Private'].map((type) => (

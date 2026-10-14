@@ -11,5 +11,7 @@ public interface IApplicationDbContext
     DbSet<ReviewComment> ReviewComments { get; }
     DbSet<AiReviewSession> AiReviewSessions { get; }
     DbSet<AiReviewIssue> AiReviewIssues { get; }
+    DbSet<PrInsight> PrInsights { get; }
+    DbSet<TrackedIssue> TrackedIssues { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -76,7 +76,7 @@ export default function Dashboard() {
         {stats.map((stat) => (
           <div
             key={stat.id}
-            className="bg-white  p-5 rounded-lg shadow-md flex flex-col justify-between hover:border-gray-300 transition-colors"
+            className="bg-white  p-5  flex flex-col justify-between transition-colors"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">
