@@ -132,4 +132,25 @@ public class TrackedIssueRepository : ITrackedIssueRepository
 
         return await query.OrderByDescending(t => t.OpenedAt).ToListAsync();
     }
+
+    public async Task<bool?> ToggleIssueIgnoreAsync(Guid issueId)
+    {
+        var issue = await _context.AiReviewIssues.FirstOrDefaultAsync(i => i.Id == issueId);
+        if (issue == null) return null;
+
+        issue.IsIgnored = !issue.IsIgnored;
+
+        // If the issue is now ignored, remove any existing tracked issue entry so it is excluded from tracking
+        if (issue.IsIgnored)
+        {
+            var tracked = await _context.TrackedIssues.Where(t => t.AiReviewIssueId == issueId).ToListAsync();
+            if (tracked.Any())
+            {
+                _context.TrackedIssues.RemoveRange(tracked);
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        return issue.IsIgnored;
+    }
 }

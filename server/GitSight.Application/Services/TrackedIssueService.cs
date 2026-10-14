@@ -23,9 +23,12 @@ public class TrackedIssueService : ITrackedIssueService
         // Get all AI issues for the given session that are NOT ignored via repository
         var validIssuesToTrack = await _trackedIssueRepository.GetValidIssuesToTrackAsync(request.SessionId);
 
+        // Validation: Ensure only non-ignored issues are tracked
+        validIssuesToTrack = validIssuesToTrack.Where(issue => !issue.IsIgnored).ToList();
+
         if (!validIssuesToTrack.Any())
         {
-            return ApiResponse<bool>.SuccessResponse(false, "No valid issues to track.");
+            return ApiResponse<bool>.SuccessResponse(false, "No valid (non-ignored) issues to track.");
         }
 
         // Map valid issues to TrackedIssues, binding to the current user
@@ -145,5 +148,17 @@ public class TrackedIssueService : ITrackedIssueService
         };
 
         return ApiResponse<TrackedIssueDto>.SuccessResponse(dto, "Issue status updated successfully.");
+    }
+
+    public async Task<ApiResponse<bool>> ToggleIssueIgnoreAsync(Guid issueId)
+    {
+        var result = await _trackedIssueRepository.ToggleIssueIgnoreAsync(issueId);
+        if (result == null)
+        {
+            return ApiResponse<bool>.FailureResponse("AI Review Issue not found.", 404);
+        }
+
+        var message = result.Value ? "Issue ignored successfully." : "Issue restored successfully.";
+        return ApiResponse<bool>.SuccessResponse(result.Value, message);
     }
 }

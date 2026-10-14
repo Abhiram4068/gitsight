@@ -13,4 +13,5 @@ public interface ITrackedIssueService
     Task<ApiResponse<List<TrackedPrDto>>> GetTrackedPrsAsync(string? search, Guid userId);
     Task<ApiResponse<List<TrackedIssueDto>>> GetTrackedIssuesForPrAsync(int prNumber, string? search, string? status, string? severity, string? issueType, Guid userId);
     Task<ApiResponse<TrackedIssueDto>> UpdateTrackedIssueStatusAsync(Guid id, UpdateTrackedIssueStatusDto request);
+    Task<ApiResponse<bool>> ToggleIssueIgnoreAsync(Guid issueId);
 }

@@ -13,6 +13,7 @@ public class PythonReviewService : IAiReviewService
     private readonly HttpClient _httpClient;
     private readonly ILogger<PythonReviewService> _logger;
     private readonly string _baseUrl;
+    private readonly string _endpointPath;
     private readonly string? _apiKey;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -31,6 +32,10 @@ public class PythonReviewService : IAiReviewService
                    ?? config["ReviewService:BaseUrl"]
                    ?? "http://localhost:8000";
 
+        _endpointPath = config["PythonReviewService:Endpoint"] 
+                        ?? config["ReviewService:Endpoint"] 
+                        ?? "/v1/reviews";
+
         _apiKey = config["PythonReviewService:ApiKey"] 
                   ?? config["ReviewService:ApiKey"] 
                   ?? config["PythonReviewServiceApiKey"]
@@ -40,7 +45,7 @@ public class PythonReviewService : IAiReviewService
 
     public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null)
     {
-        var endpoint = $"{_baseUrl.TrimEnd('/')}/review";
+        var endpoint = $"{_baseUrl.TrimEnd('/')}/{_endpointPath.TrimStart('/')}";
         _logger.LogInformation(
             "Sending PR diff to Python review service at {Endpoint}. PR: \"{PrTitle}\", Diff length: {DiffLength}",
             endpoint, prTitle, diffText.Length);

@@ -60,6 +60,7 @@ builder.Services.AddScoped<IPullRequestService, PullRequestService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITrackedIssueService, TrackedIssueService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 
 // Register FluentValidation Validators
 builder.Services.AddValidatorsFromAssemblyContaining<MergePrRequestValidator>();

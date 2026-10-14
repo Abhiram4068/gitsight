@@ -20,4 +20,6 @@ public interface ITrackedIssueRepository
     // GET Methods
     Task<List<AiReviewSession>> GetTrackedPrsAsync(string? search, Guid userId);
     Task<List<TrackedIssue>> GetTrackedIssuesForPrAsync(int prNumber, string? search, string? status, string? severity, string? issueType, Guid userId);
+
+    Task<bool?> ToggleIssueIgnoreAsync(Guid issueId);
 }
