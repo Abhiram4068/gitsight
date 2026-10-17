@@ -147,7 +147,7 @@ public class PullRequestsController : ControllerBase
 
         try
         {
-            var session = await _pullRequestService.AnalyzePullRequestAsync(token, owner, repo, prNumber);
+            var session = await _pullRequestService.AnalyzePullRequestAsync(token, owner, repo, prNumber, _currentUserService.Email, isWebhook: false);
             _logger.LogInformation("Successfully completed AnalyzePullRequest for PR #{PrNumber}", prNumber);
             return Ok(ApiResponse<AiReviewSession>.SuccessResponse(session, "AI Code Review completed successfully."));
         }

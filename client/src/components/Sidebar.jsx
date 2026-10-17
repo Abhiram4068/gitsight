@@ -3,8 +3,6 @@ import { NavLink, useLocation } from "react-router-dom";
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
-  const isPullRequests = location.pathname.includes("pull-requests");
-
   return (
     <>
       {/* Sidebar â€” hidden off-screen on mobile, slides in when open; always visible on lg+ */}

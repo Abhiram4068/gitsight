@@ -18,7 +18,7 @@ public interface IPullRequestService
     Task<AiReviewSession?> GetPullRequestInsightsAsync(string owner, string repo, int prNumber);
     Task<PrInsight?> GetInsightAsync(string owner, string repo, int prNumber);
     Task MarkInsightFailedAsync(Guid insightId);
-    Task<AiReviewSession> AnalyzePullRequestAsync(string token, string owner, string repo, int prNumber);
+    Task<AiReviewSession> AnalyzePullRequestAsync(string token, string owner, string repo, int prNumber, string? userEmail = null, bool isWebhook = false);
     Task<bool> MergePullRequestAsync(string token, MergePrRequestDto request);
     Task<bool> PostReviewToGitHubAsync(string token, Guid id, PostReviewCommentsRequestDto request);
     Task<bool> PostSingleCommentToGitHubAsync(string token, string owner, string repo, int prNumber, PostSingleCommentRequestDto request);

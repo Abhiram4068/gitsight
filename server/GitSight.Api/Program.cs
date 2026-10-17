@@ -2,6 +2,7 @@ using System.Text;
 using FluentValidation;
 using GitSight.Api.Middleware;
 using GitSight.Application.Common.Interfaces;
+using GitSight.Application.Configurations;
 using GitSight.Application.Services;
 using GitSight.Application.Validations;
 using GitSight.Infrastructure.Persistence;
@@ -55,6 +56,8 @@ builder.Services.AddScoped<IRuleRepository, RuleRepository>();
 
 
 // Register Application & Infrastructure Services
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
+builder.Services.AddScoped<IEmailService, MailKitEmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRepositoryService, RepositoryService>();
 builder.Services.AddScoped<IPullRequestService, PullRequestService>();

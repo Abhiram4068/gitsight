@@ -26,13 +26,13 @@ export default function Login() {
       }
       // Redirect to dashboard upon successful login
       setTimeout(() => {
-        navigate('/dashboard', { replace: true });
+        navigate('/home', { replace: true });
       }, 500);
     } else {
       // If already logged in, redirect directly to dashboard
       const existingToken = authApi.getToken();
       if (existingToken) {
-        navigate('/dashboard', { replace: true });
+        navigate('/home', { replace: true });
       }
     }
   }, [searchParams, navigate]);

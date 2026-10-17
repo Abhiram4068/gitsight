@@ -85,16 +85,6 @@ export default function PrAiInsights() {
   const navigate = useNavigate();
   const { setInsights: setGlobalInsights, stats } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingPhrase] = useState(() => {
-    const phrases = [
-      "Analyzing...",
-      "Processing...",
-      "Working...",
-      "Inspecting...",
-      "Reviewing...",
-    ];
-    return phrases[Math.floor(Math.random() * phrases.length)];
-  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [reviewFailed, setReviewFailed] = useState(false);
   const [reviewErrorMessage, setReviewErrorMessage] = useState("");
@@ -106,6 +96,21 @@ export default function PrAiInsights() {
   const [postedIssues, setPostedIssues] = useState(new Set());
   const [postErrors, setPostErrors] = useState({});
   const [toastNotification, setToastNotification] = useState(null);
+  const [wordIndex, setWordIndex] = useState(0);
+
+  const LOADING_WORDS = ["Analyzing", "code", "changes", "thoroughly", "now"];
+
+  useEffect(() => {
+    if (!isLoading && !isGenerating && insights) return;
+
+    const timer = setInterval(() => {
+      setWordIndex((prev) => (prev < LOADING_WORDS.length - 1 ? prev + 1 : prev));
+    }, 7000);
+
+    return () => clearInterval(timer);
+  }, [isLoading, isGenerating, insights]);
+
+  const loadingPhrase = `${LOADING_WORDS.slice(0, wordIndex + 1).join(" ")}...`;
   const hasFetched = useRef(false);
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -462,7 +467,7 @@ export default function PrAiInsights() {
         </h2>
         <p className="text-xs text-gray-500 mt-1 max-w-sm text-center">
           {isGenerating 
-            ? "AI Code Review analysis in progress (timeout limit: 3 minutes)..." 
+            ? "AI Code Review analysis in progress..." 
             : "Loading pull request insights..."}
         </p>
 
@@ -470,7 +475,7 @@ export default function PrAiInsights() {
         <div className="mt-5">
           <button
             onClick={handleReturn}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium rounded-md shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium  transition-colors cursor-pointer"
           >
             <i className="fa-solid fa-arrow-left text-[11px]"></i>
             <span>Return to PR Details</span>

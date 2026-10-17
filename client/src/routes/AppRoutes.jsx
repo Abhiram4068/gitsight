@@ -4,7 +4,7 @@ import MainLayout from '../layouts/MainLayout';
 import AiInsightsLayout from '../layouts/AiInsightsLayout';
 
 // Lazy-loaded pages
-const Dashboard = lazy(() => import('../pages/dashboard'));
+const Dashboard = lazy(() => import('../pages/home'));
 const Repositories = lazy(() => import('../pages/repositories'));
 const Login = lazy(() => import('../pages/login'));
 const PullRequests = lazy(() => import('../pages/pull-requests'));
@@ -33,7 +33,7 @@ export default function AppRoutes() {
         {/* Main Application Routes */}
         <Route element={<MainLayout />}>
           <Route path="/" element={<Dashboard />} />
-          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/home" element={<Dashboard />} />
           <Route path="/repositories" element={<Repositories />} />
           <Route path="/pull-requests" element={<PullRequests />} />
           <Route path="/webhooks" element={<Webhooks />} />
