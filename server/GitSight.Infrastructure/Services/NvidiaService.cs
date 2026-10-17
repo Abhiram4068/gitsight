@@ -54,7 +54,7 @@ public class NvidiaService : IAiReviewService
             : configuredModel;
     }
 
-    public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null)
+    public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null, List<string>? customRules = null)
     {
         _logger.LogInformation("Starting NVIDIA AI Diff analysis using model {Model}. PR Title: {PrTitle}, Diff length: {DiffLength}",
             _model, prTitle, diffText.Length);

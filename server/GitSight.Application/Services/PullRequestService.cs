@@ -18,6 +18,7 @@ public class PullRequestService : IPullRequestService
     private readonly IPullRequestRepository _repository;
     private readonly IGitHubService _gitHubService;
     private readonly IAiReviewService _aiReviewService;
+    private readonly IRuleService _ruleService;
     private readonly ILogger<PullRequestService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
 
@@ -25,12 +26,14 @@ public class PullRequestService : IPullRequestService
         IPullRequestRepository repository,
         IGitHubService gitHubService,
         IAiReviewService aiReviewService,
+        IRuleService ruleService,
         ILogger<PullRequestService> logger,
         IServiceScopeFactory scopeFactory)
     {
         _repository = repository;
         _gitHubService = gitHubService;
         _aiReviewService = aiReviewService;
+        _ruleService = ruleService;
         _logger = logger;
         _scopeFactory = scopeFactory;
     }
@@ -192,13 +195,60 @@ public class PullRequestService : IPullRequestService
     public async Task<PullRequestDto> GetPullRequestStatsAsync(string token, string owner, string repo, int prNumber)
     {
         _logger.LogInformation("GetPullRequestStatsAsync called for owner={Owner}, repo={Repo}, prNumber={PrNumber}", owner, repo, prNumber);
-        return await _gitHubService.GetPullRequestStatsAsync(token, owner, repo, prNumber);
+        var stats = await _gitHubService.GetPullRequestStatsAsync(token, owner, repo, prNumber);
+
+        try
+        {
+            var insight = await _repository.GetInsightByPrNumberAsync($"{owner}/{repo}", prNumber, includeComments: false);
+            if (insight != null)
+            {
+                // Auto-expire analyzing status if > 3 minutes has passed without completion
+                if (insight.Status == PrInsightStatus.Analyzing)
+                {
+                    var timeSinceUpdate = DateTime.UtcNow - (insight.UpdatedAt ?? insight.CreatedAt);
+                    if (timeSinceUpdate.TotalMinutes >= 3)
+                    {
+                        insight.Status = PrInsightStatus.Failed;
+                        insight.UpdatedAt = DateTime.UtcNow;
+                        await _repository.SaveChangesAsync();
+                    }
+                }
+
+                stats.Id = insight.Id;
+                stats.AiSummary = insight.AiSummary;
+                stats.RiskLevel = insight.RiskLevel;
+                stats.AnalysisStatus = insight.Status.ToString().ToLower();
+                stats.IsTracked = true;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load DB insight for PR #{PrNumber} in GetPullRequestStatsAsync", prNumber);
+        }
+
+        return stats;
     }
 
     public async Task<AiReviewSession?> GetPullRequestInsightsAsync(string owner, string repo, int prNumber)
     {
         _logger.LogInformation("GetPullRequestInsightsAsync called for owner={Owner}, repo={Repo}, prNumber={PrNumber}", owner, repo, prNumber);
         return await _repository.GetAiReviewSessionAsync(owner, repo, prNumber, includeIssues: true);
+    }
+
+    public async Task<PrInsight?> GetInsightAsync(string owner, string repo, int prNumber)
+    {
+        return await _repository.GetInsightByPrNumberAsync($"{owner}/{repo}", prNumber, includeComments: false);
+    }
+
+    public async Task MarkInsightFailedAsync(Guid insightId)
+    {
+        var insight = await _repository.GetInsightByIdAsync(insightId, includeComments: false);
+        if (insight != null)
+        {
+            insight.Status = PrInsightStatus.Failed;
+            insight.UpdatedAt = DateTime.UtcNow;
+            await _repository.SaveChangesAsync();
+        }
     }
 
     public async Task<AiReviewSession> AnalyzePullRequestAsync(string token, string owner, string repo, int prNumber)
@@ -235,14 +285,14 @@ public class PullRequestService : IPullRequestService
         if (insight != null && insight.Status == PrInsightStatus.Analyzing)
         {
             var timeSinceUpdate = DateTime.UtcNow - (insight.UpdatedAt ?? insight.CreatedAt);
-            if (timeSinceUpdate.TotalMinutes < 1)
+            if (timeSinceUpdate.TotalMinutes < 3)
             {
                 _logger.LogWarning("Analysis is already in progress for PR #{PrNumber}.", prNumber);
                 throw new InvalidOperationException("Analysis is already in progress for this PR.");
             }
             else
             {
-                _logger.LogInformation("Analysis for PR #{PrNumber} was in 'Analyzing' state. Resetting for retry.", prNumber);
+                _logger.LogInformation("Analysis for PR #{PrNumber} was in 'Analyzing' state for >= 3 minutes. Resetting for retry.", prNumber);
             }
         }
 
@@ -275,10 +325,46 @@ public class PullRequestService : IPullRequestService
         }
 
         _logger.LogInformation("Calling Python AI Review Service for PR #{PrNumber} with Diff length: {DiffLength}", prNumber, diff.Length);
+        List<string>? customRules = null;
+        try
+        {
+            customRules = await _ruleService.GetActiveRulePromptsForRepoAsync(fullRepoName);
+            if (customRules != null && customRules.Count > 0)
+            {
+                _logger.LogInformation("Loaded {Count} active custom rules for repo {Repo} to apply to PR #{PrNumber}", customRules.Count, fullRepoName, prNumber);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load custom rules for repository {Repo}. Proceeding with review without custom rules.", fullRepoName);
+        }
+
         GeminiReviewResultDto analysisDto;
         try
         {
-            analysisDto = await _aiReviewService.AnalyzeDiffAsync(diff, prDetails.Title, prDetails.Description);
+            using var timeoutCts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
+            var analysisTask = _aiReviewService.AnalyzeDiffAsync(diff, prDetails.Title, prDetails.Description, customRules);
+            var completedTask = await Task.WhenAny(analysisTask, Task.Delay(TimeSpan.FromMinutes(3), timeoutCts.Token));
+
+            if (completedTask != analysisTask)
+            {
+                _logger.LogError("AI review service analysis timed out after 3 minutes for PR #{PrNumber}", prNumber);
+                insight.Status = PrInsightStatus.Failed;
+                insight.UpdatedAt = DateTime.UtcNow;
+                await _repository.SaveChangesAsync();
+                throw new TimeoutException($"AI review timed out after 3 minutes for PR #{prNumber}.");
+            }
+
+            timeoutCts.Cancel();
+            analysisDto = await analysisTask;
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogError(ex, "AI review analysis timed out for PR #{PrNumber}", prNumber);
+            insight.Status = PrInsightStatus.Failed;
+            insight.UpdatedAt = DateTime.UtcNow;
+            await _repository.SaveChangesAsync();
+            throw;
         }
         catch (Exception ex)
         {

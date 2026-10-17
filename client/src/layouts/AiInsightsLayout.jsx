@@ -30,6 +30,10 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
     }
   };
 
+  const isAnalyzed = 
+    (insights?.analysisStatus || stats?.analysisStatus)?.toLowerCase() === 'analyzed' ||
+    (insights?.analysisStatus || stats?.analysisStatus)?.toLowerCase() === 'completed';
+
   return (
     <header className="bg-white border-b border-gray-200 shrink-0 sticky top-0 z-20">
       {/* Top utility bar */}
@@ -66,25 +70,27 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
                   {stats.repositoryFullName || (stats.htmlUrl && stats.htmlUrl.split('github.com/')[1]?.split('/pull')[0]) || "repository"}
                 </span>
               </div>
-              <div className="flex items-center space-x-2">
-                {insights?.isTracked ? (
-                  <button
-                    onClick={() => setShowUntrackModal(true)}
-                    className="inline-flex items-center space-x-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
-                    title="Stop tracking issues for this PR"
-                  >
-                    <span>Untrack Issues</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => setShowConfirmModal(true)}
-                    className="inline-flex items-center space-x-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
-                    title="Sync all active issues to track"
-                  >
-                    <span>Track Issues</span>
-                  </button>
-                )}
-              </div>
+              {isAnalyzed && (
+                <div className="flex items-center space-x-2">
+                  {insights?.isTracked ? (
+                    <button
+                      onClick={() => setShowUntrackModal(true)}
+                      className="inline-flex items-center space-x-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
+                      title="Stop tracking issues for this PR"
+                    >
+                      <span>Untrack Issues</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setShowConfirmModal(true)}
+                      className="inline-flex items-center space-x-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
+                      title="Sync all active issues to track"
+                    >
+                      <span>Track Issues</span>
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             
             <div className="flex flex-wrap items-center justify-between gap-y-1">

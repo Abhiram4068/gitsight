@@ -9,15 +9,18 @@ public class AuthService : IAuthService
 {
     private readonly IGitHubAuthService _gitHubAuthService;
     private readonly IUserRepository _userRepository;
+    private readonly IRuleRepository _ruleRepository;
     private readonly IJwtService _jwtService;
 
     public AuthService(
         IGitHubAuthService gitHubAuthService,
         IUserRepository userRepository,
+        IRuleRepository ruleRepository,
         IJwtService jwtService)
     {
         _gitHubAuthService = gitHubAuthService;
         _userRepository = userRepository;
+        _ruleRepository = ruleRepository;
         _jwtService = jwtService;
     }
 
@@ -64,13 +67,16 @@ public class AuthService : IAuthService
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
         if (user is null) return null;
 
+        var isRuleSet = await _ruleRepository.HasUserConfiguredRulesAsync(userId);
+
         return new UserProfileDto(
             user.Id,
             user.Username,
             user.Email,
             user.AvatarUrl,
             user.Role.ToString(),
-            user.CreatedAt
+            user.CreatedAt,
+            isRuleSet
         );
     }
 }

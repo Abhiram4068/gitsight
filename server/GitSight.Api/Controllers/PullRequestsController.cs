@@ -109,6 +109,25 @@ public class PullRequestsController : ControllerBase
         var session = await _pullRequestService.GetPullRequestInsightsAsync(owner, repo, prNumber);
         if (session == null)
         {
+            var insight = await _pullRequestService.GetInsightAsync(owner, repo, prNumber);
+            if (insight != null)
+            {
+                if (insight.Status == Domain.Enums.PrInsightStatus.Analyzing)
+                {
+                    var timeSinceUpdate = DateTime.UtcNow - (insight.UpdatedAt ?? insight.CreatedAt);
+                    if (timeSinceUpdate.TotalMinutes >= 3)
+                    {
+                        await _pullRequestService.MarkInsightFailedAsync(insight.Id);
+                        insight.Status = Domain.Enums.PrInsightStatus.Failed;
+                    }
+                }
+
+                if (insight.Status == Domain.Enums.PrInsightStatus.Failed)
+                {
+                    return StatusCode(422, ApiResponse<AiReviewSession>.FailureResponse("The last AI review failed for this pull request.", 422));
+                }
+            }
+
             return NotFound(ApiResponse<AiReviewSession>.FailureResponse("No AI insights found for this pull request.", 404));
         }
 
@@ -131,6 +150,11 @@ public class PullRequestsController : ControllerBase
             var session = await _pullRequestService.AnalyzePullRequestAsync(token, owner, repo, prNumber);
             _logger.LogInformation("Successfully completed AnalyzePullRequest for PR #{PrNumber}", prNumber);
             return Ok(ApiResponse<AiReviewSession>.SuccessResponse(session, "AI Code Review completed successfully."));
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Timeout during AnalyzePullRequest for PR #{PrNumber}", prNumber);
+            return StatusCode(408, ApiResponse<AiReviewSession>.FailureResponse(ex.Message, 408));
         }
         catch (InvalidOperationException ex)
         {

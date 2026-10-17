@@ -18,6 +18,8 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
     public DbSet<AiReviewIssue> AiReviewIssues => Set<AiReviewIssue>();
     public DbSet<PrInsight> PrInsights => Set<PrInsight>();
     public DbSet<TrackedIssue> TrackedIssues => Set<TrackedIssue>();
+    public DbSet<Rule> Rules => Set<Rule>();
+    public DbSet<RuleConfig> RuleConfigs => Set<RuleConfig>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -120,6 +122,28 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
                   .WithMany()
                   .HasForeignKey(t => t.TrackedByUserId)
                   .OnDelete(DeleteBehavior.NoAction);
+        });
+
+        // Rule Configuration
+        modelBuilder.Entity<Rule>(entity =>
+        {
+            entity.HasKey(r => r.Id);
+            entity.Property(r => r.DisplayName).IsRequired().HasMaxLength(200);
+            entity.Property(r => r.Description).HasMaxLength(1000);
+            entity.Property(r => r.Prompt).IsRequired();
+            entity.Property(r => r.Status).HasMaxLength(50);
+        });
+
+        // RuleConfig Configuration
+        modelBuilder.Entity<RuleConfig>(entity =>
+        {
+            entity.HasKey(rc => rc.Id);
+            entity.Property(rc => rc.RepositoryFullName).HasMaxLength(400);
+
+            entity.HasOne(rc => rc.Rule)
+                  .WithMany()
+                  .HasForeignKey(rc => rc.RuleId)
+                  .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

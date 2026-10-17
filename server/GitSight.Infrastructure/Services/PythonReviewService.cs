@@ -43,18 +43,20 @@ public class PythonReviewService : IAiReviewService
                   ?? Environment.GetEnvironmentVariable("SERVICE_API_KEY");
     }
 
-    public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null)
+    public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null, List<string>? customRules = null)
     {
         var endpoint = $"{_baseUrl.TrimEnd('/')}/{_endpointPath.TrimStart('/')}";
         _logger.LogInformation(
-            "Sending PR diff to Python review service at {Endpoint}. PR: \"{PrTitle}\", Diff length: {DiffLength}",
-            endpoint, prTitle, diffText.Length);
+            "Sending PR diff to Python review service at {Endpoint}. PR: \"{PrTitle}\", Diff length: {DiffLength}, Custom rules count: {RuleCount}",
+            endpoint, prTitle, diffText.Length, customRules?.Count ?? 0);
 
         var payload = new
         {
             diff_text = diffText,
+            diff = diffText,
             pr_title = prTitle,
-            pr_description = prDescription ?? string.Empty
+            pr_description = prDescription ?? string.Empty,
+            custom_rules = customRules ?? new List<string>()
         };
 
         var jsonPayload = JsonSerializer.Serialize(payload);

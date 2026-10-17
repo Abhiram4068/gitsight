@@ -15,17 +15,20 @@ public class WebhooksController : ControllerBase
     private readonly IApplicationDbContext _context;
     private readonly IGitHubService _gitHubService;
     private readonly IAiReviewService _aiReviewService;
+    private readonly IRuleService _ruleService;
     private readonly ILogger<WebhooksController> _logger;
 
     public WebhooksController(
         IApplicationDbContext context,
         IGitHubService gitHubService,
         IAiReviewService aiReviewService,
+        IRuleService ruleService,
         ILogger<WebhooksController> logger)
     {
         _context = context;
         _gitHubService = gitHubService;
         _aiReviewService = aiReviewService;
+        _ruleService = ruleService;
         _logger = logger;
     }
 
@@ -79,11 +82,23 @@ public class WebhooksController : ControllerBase
         // 1. Fetch diff from GitHub
         var diff = await _gitHubService.GetPullRequestDiffAsync(repo.User.AccessToken, owner, repoName, prNumber);
 
-        // 2. Analyze diff using AI Review Service
-        var aiResult = await _aiReviewService.AnalyzeDiffAsync(diff, prTitle, prBody);
-
-        // 3. Save or update PrInsight
         var fullRepoName = $"{owner}/{repoName}";
+
+        // 2. Fetch custom rules if configured
+        List<string>? customRules = null;
+        try
+        {
+            customRules = await _ruleService.GetActiveRulePromptsForRepoAsync(fullRepoName);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to load custom rules for webhook PR in {Repo}", fullRepoName);
+        }
+
+        // 3. Analyze diff using AI Review Service
+        var aiResult = await _aiReviewService.AnalyzeDiffAsync(diff, prTitle, prBody, customRules);
+
+        // 4. Save or update PrInsight
         var insight = await _context.PrInsights
             .Include(p => p.Comments)
             .FirstOrDefaultAsync(p => p.RepositoryFullName == fullRepoName && p.PrNumber == prNumber);
