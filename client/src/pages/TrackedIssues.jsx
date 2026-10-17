@@ -144,7 +144,7 @@ export default function TrackedIssues() {
         <div>
           <nav className="flex items-center space-x-1.5 text-xs text-gray-500 mb-1">
             <Link to="/" className="hover:underline hover:text-gray-900 cursor-pointer transition-colors">
-              Dashboard
+              Home
             </Link>
             <span className="text-gray-400">&gt;</span>
             <span className="font-bold text-gray-900">Tracked Issues</span>
@@ -220,16 +220,6 @@ export default function TrackedIssues() {
               </div>
             )}
           </div>
-
-          <button
-            onClick={() => fetchTrackedIssues(true)}
-            disabled={refreshing || loading || !selectedPr}
-            className="text-xs border bg-white border-gray-300 px-2.5 py-1.5 text-gray-600 hover:bg-gray-50 flex items-center space-x-1.5 transition-colors cursor-pointer rounded-sm"
-            title="Refresh Tracked Issues"
-          >
-            <i className={`fa-solid fa-rotate-right text-xs ${refreshing ? 'animate-spin' : ''}`}></i>
-            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
-          </button>
         </div>
       </div>
 

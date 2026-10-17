@@ -37,7 +37,11 @@ export const pullRequestsApi = {
   },
 
   analyzePr: async ({ owner, repo, prNumber }) => {
-    const response = await axiosClient.post(`/api/pullrequests/${owner}/${repo}/${prNumber}/analyze`);
+    const response = await axiosClient.post(
+      `/api/pullrequests/${owner}/${repo}/${prNumber}/analyze`,
+      null,
+      { timeout: 210000 }
+    );
     return response.data?.data;
   },
 

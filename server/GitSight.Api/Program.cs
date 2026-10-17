@@ -44,7 +44,7 @@ builder.Services.AddHttpClient<IGitHubAuthService, GitHubAuthService>();
 builder.Services.AddHttpClient<IGitHubService, GitHubService>();
 builder.Services.AddHttpClient<IAiReviewService, PythonReviewService>(client => 
 {
-    client.Timeout = TimeSpan.FromMinutes(5);
+    client.Timeout = TimeSpan.FromMinutes(3);
 });
 
 // Register Repositories (Infrastructure)

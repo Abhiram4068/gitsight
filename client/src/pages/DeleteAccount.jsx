@@ -68,7 +68,7 @@ export default function DeleteAccount() {
         <div>
           <nav className="flex items-center space-x-1.5 text-xs text-gray-500 mb-1">
             <Link to="/" className="hover:underline hover:text-gray-900 cursor-pointer transition-colors">
-              Dashboard
+              Home
             </Link>
             <span className="text-gray-400">&gt;</span>
             <span className="font-bold text-red-600">Delete Account</span>

@@ -45,7 +45,7 @@ export default function MainLayout() {
   }, [navigate]);
 
   return (
-    <div className="bg-white text-gray-900 min-h-screen flex flex-col">
+    <div className="bg-white text-gray-900 h-screen flex flex-col overflow-hidden">
       <Header
         user={user}
         onLogout={authApi.logout}
@@ -53,7 +53,7 @@ export default function MainLayout() {
         sidebarOpen={sidebarOpen}
       />
 
-      <div className="flex flex-1 relative">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile overlay backdrop */}
         {sidebarOpen && (
           <div
@@ -65,7 +65,7 @@ export default function MainLayout() {
 
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-        <main className="flex-1 p-4 sm:p-6 bg-white overflow-x-auto min-w-0">
+        <main className="flex-1 p-4 sm:p-6 bg-white overflow-y-auto overflow-x-hidden min-w-0">
           <Outlet />
         </main>
       </div>

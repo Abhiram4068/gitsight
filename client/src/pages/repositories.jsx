@@ -21,7 +21,7 @@ export default function Repositories() {
   const fetchRepos = useCallback(async (isSync = false) => {
     try {
       if (isSync) setSyncing(true);
-      else setLoading(true);
+      setLoading(true);
 
       const data = await repositoriesApi.getRepositories({
         search: searchQuery,
@@ -67,7 +67,7 @@ export default function Repositories() {
     fetchRepos();
   }, [fetchRepos]);
 
-  const handleSync = async () => {
+  const handleRefresh = async () => {
     await fetchRepos(true);
   };
 
@@ -96,7 +96,7 @@ export default function Repositories() {
         <div>
           <nav className="flex items-center space-x-1.5 text-xs text-gray-500 mb-1">
             <Link to="/" className="hover:underline hover:text-gray-900 cursor-pointer transition-colors">
-              Dashboard
+              Home
             </Link>
             <span className="text-gray-400">&gt;</span>
             <span className="font-bold text-gray-900">Repositories</span>
@@ -113,7 +113,7 @@ export default function Repositories() {
         {/* Right side controls: Refresh */}
         <div className="flex items-center space-x-2 shrink-0">
           <button
-            onClick={handleSync}
+            onClick={handleRefresh}
             disabled={syncing || loading}
             className="text-xs border bg-white border-gray-300 px-2.5 py-1.5 text-gray-600 hover:bg-gray-50 flex items-center space-x-1.5 transition-colors cursor-pointer"
             title="Refresh Repositories from GitHub"

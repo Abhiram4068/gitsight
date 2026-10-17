@@ -1,4 +1,4 @@
-﻿import React from "react";
+import React from "react";
 import { NavLink, useLocation } from "react-router-dom";
 
 export default function Sidebar({ isOpen, onClose }) {
@@ -11,18 +11,18 @@ export default function Sidebar({ isOpen, onClose }) {
       <aside
         className={`
           fixed top-14 left-0 bottom-0 w-64 z-40
-          py-4 border-r border-gray-200 space-y-6 bg-gray-100 select-none
+          pt-0 pb-4 border-r border-gray-200 bg-gray-100 select-none
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full'}
           lg:static lg:translate-x-0 lg:top-auto lg:bottom-auto lg:z-auto
-          lg:min-h-[calc(100vh-3.5rem)] lg:shrink-0 overflow-y-auto
+          lg:h-full lg:shrink-0 overflow-y-auto
         `}
       >
-        {/* Close button â€” mobile only */}
+        {/* Close button — mobile only */}
         <button
           onClick={onClose}
           aria-label="Close menu"
-          className="lg:hidden absolute top-3 right-3 w-7 h-7 flex items-center justify-center rounded text-gray-500 hover:bg-gray-200 transition-colors"
+          className="lg:hidden absolute top-2 right-2 w-7 h-7 flex items-center justify-center rounded text-gray-500 hover:bg-gray-200 transition-colors z-10"
         >
           <i className="fa-solid fa-xmark text-sm"></i>
         </button>
@@ -40,8 +40,8 @@ export default function Sidebar({ isOpen, onClose }) {
               }`
             }
           >
-            <i className="fa-solid fa-table-columns w-4 text-center"></i>{" "}
-            <span>Dashboard</span>
+            <i className="fa-solid fa-home w-4 text-center"></i>{" "}
+            <span>Home</span>
           </NavLink>
 
           <hr className="border-gray-200" />
@@ -161,6 +161,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <span>Settings</span>
           </NavLink>
           <hr className="border-gray-200" />
+          
           <NavLink
             to="/notifications"
             className={({ isActive }) =>
@@ -175,6 +176,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <span>Notifications</span>
           </NavLink>
           <hr className="border-gray-200" />
+          */}
           <a
             href="https://github.com/settings/profile"
             target="_blank"
@@ -185,6 +187,7 @@ export default function Sidebar({ isOpen, onClose }) {
             <span>GitHub Profile</span>
           </a>
           <hr className="border-gray-200" />
+          {/*
           <NavLink
             to="/delete-account"
             className={({ isActive }) =>

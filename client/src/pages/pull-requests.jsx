@@ -125,7 +125,7 @@ export default function PullRequests() {
         <div>
           <nav className="flex items-center space-x-1.5 text-xs text-gray-500 mb-1">
             <Link to="/" className="hover:underline hover:text-gray-900 cursor-pointer transition-colors">
-              Dashboard
+              Home
             </Link>
             {repoFromUrl && (
               <>

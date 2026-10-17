@@ -77,10 +77,12 @@ import {
   useLocation,
   useSearchParams,
   useOutletContext,
+  useNavigate,
 } from "react-router-dom";
 import { pullRequestsApi } from "../api/pullRequests";
 
 export default function PrAiInsights() {
+  const navigate = useNavigate();
   const { setInsights: setGlobalInsights, stats } = useOutletContext();
   const [isLoading, setIsLoading] = useState(true);
   const [loadingPhrase] = useState(() => {
@@ -94,6 +96,8 @@ export default function PrAiInsights() {
     return phrases[Math.floor(Math.random() * phrases.length)];
   });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [reviewFailed, setReviewFailed] = useState(false);
+  const [reviewErrorMessage, setReviewErrorMessage] = useState("");
   const [insights, setInsights] = useState(null);
   const [activeModal, setActiveModal] = useState(null);
   const [ignoredIssues, setIgnoredIssues] = useState(new Set());
@@ -120,27 +124,67 @@ export default function PrAiInsights() {
     },
   };
 
+  const handleReturn = () => {
+    if (searchParams.get("from") === "tracked") {
+      navigate("/tracked-issues");
+    } else if (repoParam && prNumberParam) {
+      navigate(`/pr-detail?repo=${encodeURIComponent(repoParam)}&pr=${prNumberParam}`);
+    } else {
+      navigate(-1);
+    }
+  };
+
   const fetchInsights = async () => {
     if (!repoParam || !prNumberParam) return;
     const [owner, repo] = repoParam.split("/");
     try {
       setIsLoading(true);
+      setReviewFailed(false);
+
+      // Check current PR stats first if available
+      let currentStats = stats;
+      if (!currentStats?.analysisStatus) {
+        try {
+          currentStats = await pullRequestsApi.getPrStats({ owner, repo, prNumber: prNumberParam });
+        } catch (e) {
+          console.warn("Could not fetch current PR stats:", e);
+        }
+      }
+
+      if (currentStats?.analysisStatus === "failed") {
+        setReviewFailed(true);
+        setReviewErrorMessage("The last AI review failed for this pull request. Click to retry again.");
+        setIsLoading(false);
+        return;
+      }
+
       const data = await pullRequestsApi.getInsights({
         owner,
         repo,
         prNumber: prNumberParam,
       });
-      setInsights(data);
-      setGlobalInsights(data);
+      const dataWithStatus = data ? { ...data, analysisStatus: "analyzed" } : data;
+      setInsights(dataWithStatus);
+      setGlobalInsights(dataWithStatus);
       setIsLoading(false);
     } catch (error) {
-      if (error.response?.status === 404) {
+      if (
+        error.response?.status === 422 || 
+        error.response?.data?.message?.toLowerCase().includes("failed")
+      ) {
+        console.warn("The last AI review failed:", error);
+        setReviewFailed(true);
+        setReviewErrorMessage(error.response?.data?.message || "The last AI review was failed. Click to retry again.");
+        setIsLoading(false);
+      } else if (error.response?.status === 404) {
         console.log("No existing review found. Triggering AI analysis...");
         await generateInsights();
       } else {
         console.error("Failed to fetch PR insights:", error);
+        setReviewFailed(true);
+        setReviewErrorMessage("Failed to fetch PR insights. Click to retry again.");
+        setIsLoading(false);
       }
-      setIsLoading(false);
     }
   };
 
@@ -149,17 +193,27 @@ export default function PrAiInsights() {
     const [owner, repo] = repoParam.split("/");
     try {
       setIsGenerating(true);
+      setReviewFailed(false);
+      setReviewErrorMessage("");
       const data = await pullRequestsApi.analyzePr({
         owner,
         repo,
         prNumber: prNumberParam,
       });
-      setInsights(data);
-      setGlobalInsights(data);
+      const dataWithStatus = data ? { ...data, analysisStatus: "analyzed" } : data;
+      setInsights(dataWithStatus);
+      setGlobalInsights(dataWithStatus);
     } catch (error) {
       console.error("Failed to generate PR insights:", error);
+      setReviewFailed(true);
+      const msg = error.response?.data?.message || 
+        (error.response?.status === 408 
+          ? "AI review analysis timed out after 3 minutes." 
+          : "The last review was failed. Click to retry again.");
+      setReviewErrorMessage(msg);
     } finally {
       setIsGenerating(false);
+      setIsLoading(false);
     }
   };
 
@@ -289,6 +343,35 @@ export default function PrAiInsights() {
     fetchInsights();
   }, [repoParam, prNumberParam]);
 
+  // Poll for insights if the analysis is still in progress
+  useEffect(() => {
+    if (insights || reviewFailed || !repoParam || !prNumberParam) return;
+    const interval = setInterval(async () => {
+      const [owner, repo] = repoParam.split("/");
+      try {
+        const data = await pullRequestsApi.getInsights({
+          owner,
+          repo,
+          prNumber: prNumberParam,
+        });
+        if (data) {
+          const dataWithStatus = { ...data, analysisStatus: "analyzed" };
+          setInsights(dataWithStatus);
+          setGlobalInsights(dataWithStatus);
+          setIsLoading(false);
+          setReviewFailed(false);
+        }
+      } catch (err) {
+        if (err.response?.status === 422 || err.response?.data?.message?.toLowerCase().includes("failed")) {
+          setReviewFailed(true);
+          setReviewErrorMessage(err.response?.data?.message || "The last review was failed. Click to retry again.");
+          setIsLoading(false);
+        }
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [insights, reviewFailed, repoParam, prNumberParam]);
+
   // Synchronize posted and ignored issues from database API response
   useEffect(() => {
     if (insights?.issues) {
@@ -331,25 +414,68 @@ export default function PrAiInsights() {
     }
   }, [insights, issueIdParam]);
 
-  if (isLoading) {
+  if (reviewFailed && !insights) {
     return (
-      <div className="h-[60vh] bg-transparent text-gray-700 flex flex-col items-center justify-center font-sans">
-        <div className="w-5 h-5 border-2 border-gray-400 border-t-blue-600 rounded-full animate-spin mb-3"></div>
-        <h2 className="text-xs font-semibold text-gray-900 tracking-tight">
-          {loadingPhrase}
-        </h2>
+      <div className="h-[65vh] bg-transparent flex flex-col items-center justify-center font-sans px-4">
+        <div className="max-w-md w-full p-8 text-center ">
+          <div className="w-14 h-14 mx-auto flex items-center justify-center text-amber-600 mb-4 shadow-inner">
+            <i className="fa-solid fa-triangle-exclamation text-2xl"></i>
+          </div>
+          
+          <h2 className="text-base font-bold text-gray-900 mb-2">
+            The last review was failed
+          </h2>
+          
+          <p className="text-xs text-gray-600 mb-6 leading-relaxed">
+            {reviewErrorMessage || "The AI analysis timed out (3 minute limit) or encountered an error while processing this pull request."}
+          </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <button
+              onClick={() => generateInsights()}
+              disabled={isGenerating}
+              className="w-full sm:w-auto inline-flex items-center justify-center px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold  shadow-sm transition-all cursor-pointer space-x-2 disabled:opacity-50"
+            >
+              <i className={`fa-solid fa-rotate-right ${isGenerating ? 'animate-spin' : ''}`}></i>
+              <span>{isGenerating ? "Retrying Review..." : "Click to retry again"}</span>
+            </button>
+
+            <button
+              onClick={handleReturn}
+              className="w-full sm:w-auto inline-flex items-center justify-center px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium  transition-colors cursor-pointer"
+            >
+              <i className="fa-solid fa-arrow-left mr-1.5 text-xs"></i>
+              <span>Return to PR Details</span>
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
-  if (!insights) {
+  if (isLoading || isGenerating || !insights) {
     return (
-      <div className="h-[60vh] flex flex-col items-center justify-center space-y-4">
-        <h2 className="text-lg font-bold text-gray-900">AI Review Pending</h2>
-        <p className="text-sm text-gray-500 max-w-sm text-center">
-          The automated AI review for this Pull Request has not completed yet,
-          or is currently analyzing. Please check back later.
+      <div className="h-[60vh] bg-transparent text-gray-700 flex flex-col items-center justify-center font-sans px-4">
+        <div className="w-6 h-6 border-2 border-gray-300 border-t-blue-600 rounded-full animate-spin mb-3"></div>
+        <h2 className="text-sm font-semibold text-gray-900 tracking-tight">
+          {loadingPhrase}
+        </h2>
+        <p className="text-xs text-gray-500 mt-1 max-w-sm text-center">
+          {isGenerating 
+            ? "AI Code Review analysis in progress (timeout limit: 3 minutes)..." 
+            : "Loading pull request insights..."}
         </p>
+
+        {/* Return Button during loading */}
+        <div className="mt-5">
+          <button
+            onClick={handleReturn}
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium rounded-md shadow-xs transition-colors cursor-pointer"
+          >
+            <i className="fa-solid fa-arrow-left text-[11px]"></i>
+            <span>Return to PR Details</span>
+          </button>
+        </div>
       </div>
     );
   }
@@ -358,12 +484,35 @@ export default function PrAiInsights() {
 
   return (
     <div className="space-y-6">
-      {/* Page Title */}
-      <div className="pb-2">
-        <h1 className="text-xl font-bold text-gray-900 tracking-tight">
-          Overview
-        </h1>
+      {/* Page Title & Actions */}
+      <div className="flex items-center justify-between pb-3 border-b border-gray-200 gap-3">
+        <div className="flex items-center space-x-3">
+          <h1 className="text-xl font-bold text-gray-900 tracking-tight">
+            Overview
+          </h1>
+        </div>
       </div>
+
+      {/* Failed Retry Banner if insights are already displayed */}
+      {reviewFailed && (
+        <div className="bg-amber-50 border border-amber-300 rounded-lg p-3.5 text-xs text-amber-900 flex items-center justify-between shadow-xs">
+          <div className="flex items-center space-x-2.5">
+            <i className="fa-solid fa-triangle-exclamation text-amber-600 text-base"></i>
+            <div>
+              <span className="font-bold">The last review was failed.</span>
+              <span className="ml-1 text-amber-800">{reviewErrorMessage}</span>
+            </div>
+          </div>
+          <button
+            onClick={() => generateInsights()}
+            disabled={isGenerating}
+            className="inline-flex items-center space-x-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white  text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <i className={`fa-solid fa-rotate-right ${isGenerating ? 'animate-spin' : ''}`}></i>
+            <span>{isGenerating ? "Retrying..." : "Click to retry again"}</span>
+          </button>
+        </div>
+      )}
 
       {/* Toast Notification */}
       {toastNotification && (
