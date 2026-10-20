@@ -42,6 +42,26 @@ export const authApi = {
       return null;
     }
   },
+
+  toggleEmailNotifications: async () => {
+    try {
+      const response = await axiosClient.post('/api/auth/toggle-email');
+      return response.data?.data || null;
+    } catch (err) {
+      console.error('Failed to toggle email notifications:', err);
+      throw err;
+    }
+  },
+
+  toggleEmail: async () => {
+    try {
+      const response = await axiosClient.post('/api/auth/toggle-email');
+      return response.data?.data || null;
+    } catch (err) {
+      console.error('Failed to toggle email notifications:', err);
+      throw err;
+    }
+  },
 };
 
 export default authApi;

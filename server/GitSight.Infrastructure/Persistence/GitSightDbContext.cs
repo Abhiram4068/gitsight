@@ -11,8 +11,6 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
     }
 
     public DbSet<User> Users => Set<User>();
-    public DbSet<Repository> Repositories => Set<Repository>();
-    public DbSet<PullRequest> PullRequests => Set<PullRequest>();
     public DbSet<ReviewComment> ReviewComments => Set<ReviewComment>();
     public DbSet<AiReviewSession> AiReviewSessions => Set<AiReviewSession>();
     public DbSet<AiReviewIssue> AiReviewIssues => Set<AiReviewIssue>();
@@ -32,35 +30,6 @@ public class GitSightDbContext : DbContext, IApplicationDbContext
             entity.HasIndex(u => u.GitHubId).IsUnique();
             entity.Property(u => u.Username).IsRequired().HasMaxLength(150);
             entity.Property(u => u.AccessToken).IsRequired();
-
-            entity.HasMany(u => u.Repositories)
-                  .WithOne(r => r.User)
-                  .HasForeignKey(r => r.UserId)
-                  .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // Repository Configuration
-        modelBuilder.Entity<Repository>(entity =>
-        {
-            entity.HasKey(r => r.Id);
-            entity.HasIndex(r => r.GitHubRepoId);
-            entity.Property(r => r.Name).IsRequired().HasMaxLength(200);
-            entity.Property(r => r.FullName).IsRequired().HasMaxLength(400);
-            entity.Property(r => r.Owner).IsRequired().HasMaxLength(150);
-
-            entity.HasMany(r => r.PullRequests)
-                  .WithOne(pr => pr.Repository)
-                  .HasForeignKey(pr => pr.RepositoryId)
-                  .OnDelete(DeleteBehavior.Cascade);
-        });
-
-        // PullRequest Configuration
-        modelBuilder.Entity<PullRequest>(entity =>
-        {
-            entity.HasKey(pr => pr.Id);
-            entity.HasIndex(pr => new { pr.RepositoryId, pr.PrNumber }).IsUnique();
-            entity.Property(pr => pr.Title).IsRequired().HasMaxLength(500);
-            entity.Property(pr => pr.HeadSha).HasMaxLength(100);
         });
 
         // ReviewComment Configuration

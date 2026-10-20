@@ -83,7 +83,12 @@ import { pullRequestsApi } from "../api/pullRequests";
 
 export default function PrAiInsights() {
   const navigate = useNavigate();
-  const { setInsights: setGlobalInsights, stats } = useOutletContext();
+  const { setInsights: setGlobalInsights, stats, globalInsights } = useOutletContext();
+  const [prStats, setPrStats] = useState(stats || null);
+
+  useEffect(() => {
+    if (stats) setPrStats(stats);
+  }, [stats]);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [reviewFailed, setReviewFailed] = useState(false);
@@ -119,6 +124,13 @@ export default function PrAiInsights() {
   const prNumberParam = location.state?.prNumberParam || searchParams.get("pr");
   const issueIdParam = searchParams.get("issue");
   const isFromTracked = searchParams.get("from") === "tracked";
+  const isPrTracked = Boolean(
+    prStats?.isTracked ||
+    stats?.isTracked ||
+    insights?.isTracked ||
+    globalInsights?.isTracked ||
+    isFromTracked
+  );
 
   const modalConfig = {
     export: {
@@ -151,6 +163,7 @@ export default function PrAiInsights() {
       if (!currentStats?.analysisStatus) {
         try {
           currentStats = await pullRequestsApi.getPrStats({ owner, repo, prNumber: prNumberParam });
+          if (currentStats) setPrStats(currentStats);
         } catch (e) {
           console.warn("Could not fetch current PR stats:", e);
         }
@@ -223,6 +236,7 @@ export default function PrAiInsights() {
   };
 
   const toggleIgnore = async (id) => {
+    if (isPrTracked) return;
     const willBeIgnored = !ignoredIssues.has(id);
 
     // Optimistic UI update
@@ -348,34 +362,6 @@ export default function PrAiInsights() {
     fetchInsights();
   }, [repoParam, prNumberParam]);
 
-  // Poll for insights if the analysis is still in progress
-  useEffect(() => {
-    if (insights || reviewFailed || !repoParam || !prNumberParam) return;
-    const interval = setInterval(async () => {
-      const [owner, repo] = repoParam.split("/");
-      try {
-        const data = await pullRequestsApi.getInsights({
-          owner,
-          repo,
-          prNumber: prNumberParam,
-        });
-        if (data) {
-          const dataWithStatus = { ...data, analysisStatus: "analyzed" };
-          setInsights(dataWithStatus);
-          setGlobalInsights(dataWithStatus);
-          setIsLoading(false);
-          setReviewFailed(false);
-        }
-      } catch (err) {
-        if (err.response?.status === 422 || err.response?.data?.message?.toLowerCase().includes("failed")) {
-          setReviewFailed(true);
-          setReviewErrorMessage(err.response?.data?.message || "The last review was failed. Click to retry again.");
-          setIsLoading(false);
-        }
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [insights, reviewFailed, repoParam, prNumberParam]);
 
   // Synchronize posted and ignored issues from database API response
   useEffect(() => {
@@ -600,7 +586,7 @@ export default function PrAiInsights() {
 
                 {/* Review Card */}
                 <div
-                  className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-all duration-500 ${ignoredIssues.has(thread.id) ? "opacity-50 grayscale" : ""}`}
+                  className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-all duration-500 ${!isPrTracked && ignoredIssues.has(thread.id) ? "opacity-50 grayscale" : ""}`}
                 >
                   {/* Diff Context Header */}
                   <div className="bg-gray-100/70 px-3 py-2 border-b border-gray-200 flex items-center justify-between font-mono text-xs text-gray-600">
@@ -612,8 +598,8 @@ export default function PrAiInsights() {
                         Lines +{thread.startLine} to +{thread.endLine}
                       </span>
 
-                      {/* Minimalist Ignore Toggle */}
-                      {!isFromTracked && (
+                      {/* Minimalist Ignore Toggle — Hidden if PR is already tracked */}
+                      {!isPrTracked && (
                         <button
                           disabled={togglingIgnoreId === thread.id}
                           onClick={() => toggleIgnore(thread.id)}

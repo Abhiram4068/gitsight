@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { pullRequestsApi } from '../api/pullRequests';
 import StatusBadge from '../components/StatusBadge';
 import PrDetailRightSidebar from '../components/PrDetailRightSidebar';
@@ -218,13 +218,35 @@ export default function PrDetail() {
   return (
     <div className="bg-white text-gray-900 h-screen overflow-hidden flex flex-col">
       {/* Top utility bar */}
-      <div className="px-6 py-2 border-b border-gray-100 flex items-center justify-between bg-gray-100">
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer"
+      <div className="px-4 sm:px-6 border-b border-gray-200 flex items-center justify-between bg-gray-100 h-9">
+        <div className="flex items-center h-full space-x-3">
+          <Link
+            to="/"
+            className="flex items-center space-x-1.5 text-xs text-blue-600 hover:underline hover:text-blue-700 font-medium cursor-pointer"
+          >
+            <i className="fa-solid fa-house text-xs"></i>
+            <span>Home</span>
+          </Link>
+
+          {/* Vertical divider touching top of utility bar and bottom border */}
+          <div className="h-full w-[1px] bg-gray-300"></div>
+
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center text-xs font-medium text-gray-600 hover:text-gray-900 cursor-pointer"
+          >
+            Back to PRs
+          </button>
+          <div className="h-full w-[1px] bg-gray-300"></div>
+        </div>
+
+        <Link
+          className="flex items-center space-x-1.5 text-gray-800 hover:text-gray-950 transition-colors cursor-pointer select-none"
+          title="GitSight"
         >
-          &larr; Back to PRs
-        </button>
+          <img src="/gitsight.svg" alt="GitSight Logo" className="w-3.5 h-3.5 object-contain" />
+          <span className="text-xs font-bold tracking-wider">GitSight.</span>
+        </Link>
       </div>
 
       {/* Unified PR Header & Info Section */}

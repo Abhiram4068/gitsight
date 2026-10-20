@@ -15,11 +15,16 @@ public class MailKitEmailService : IEmailService
 {
     private readonly SmtpSettings _settings;
     private readonly ILogger<MailKitEmailService> _logger;
+    private readonly IUserRepository _userRepository;
 
-    public MailKitEmailService(IOptions<SmtpSettings> options, ILogger<MailKitEmailService> logger)
+    public MailKitEmailService(
+        IOptions<SmtpSettings> options,
+        ILogger<MailKitEmailService> logger,
+        IUserRepository userRepository)
     {
         _settings = options.Value;
         _logger = logger;
+        _userRepository = userRepository;
     }
 
     public async Task SendEmailAsync(string toEmail, string subject, string htmlBody, CancellationToken cancellationToken = default)
@@ -27,6 +32,12 @@ public class MailKitEmailService : IEmailService
         if (string.IsNullOrWhiteSpace(toEmail))
         {
             _logger.LogWarning("Email sending skipped: recipient email address is empty.");
+            return;
+        }
+
+        if (!await IsEmailAllowedAsync(toEmail, cancellationToken))
+        {
+            _logger.LogInformation("Email sending skipped: email notifications are disabled for recipient {ToEmail}.", toEmail);
             return;
         }
 
@@ -81,8 +92,14 @@ public class MailKitEmailService : IEmailService
         }
     }
 
-    public Task SendPrReviewStartedEmailAsync(string toEmail, string owner, string repo, int prNumber, CancellationToken cancellationToken = default)
+    public async Task SendPrReviewStartedEmailAsync(string toEmail, string owner, string repo, int prNumber, CancellationToken cancellationToken = default)
     {
+        if (!await IsEmailAllowedAsync(toEmail, cancellationToken))
+        {
+            _logger.LogInformation("Email sending skipped: email notifications are disabled for recipient {ToEmail}.", toEmail);
+            return;
+        }
+
         var subject = $"[GitSight] AI Review Started: {owner}/{repo} #{prNumber}";
         var htmlBody = $@"
 <!DOCTYPE html>
@@ -131,11 +148,17 @@ public class MailKitEmailService : IEmailService
 </body>
 </html>";
 
-        return SendEmailAsync(toEmail, subject, htmlBody, cancellationToken);
+        await SendEmailAsync(toEmail, subject, htmlBody, cancellationToken);
     }
 
-    public Task SendPrReviewCompletedEmailAsync(string toEmail, string owner, string repo, int prNumber, string prInsightUrl, CancellationToken cancellationToken = default)
+    public async Task SendPrReviewCompletedEmailAsync(string toEmail, string owner, string repo, int prNumber, string prInsightUrl, CancellationToken cancellationToken = default)
     {
+        if (!await IsEmailAllowedAsync(toEmail, cancellationToken))
+        {
+            _logger.LogInformation("Email sending skipped: email notifications are disabled for recipient {ToEmail}.", toEmail);
+            return;
+        }
+
         var subject = $"[GitSight] AI Review Completed: {owner}/{repo} #{prNumber}";
         var htmlBody = $@"
 <!DOCTYPE html>
@@ -188,6 +211,24 @@ public class MailKitEmailService : IEmailService
 </body>
 </html>";
 
-        return SendEmailAsync(toEmail, subject, htmlBody, cancellationToken);
+        await SendEmailAsync(toEmail, subject, htmlBody, cancellationToken);
+    }
+
+    private async Task<bool> IsEmailAllowedAsync(string toEmail, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(toEmail))
+        {
+            return false;
+        }
+
+        try
+        {
+            return await _userRepository.IsEmailAllowedAsync(toEmail, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to check email allowed status for recipient {ToEmail}. Defaulting to false.", toEmail);
+            return false;
+        }
     }
 }

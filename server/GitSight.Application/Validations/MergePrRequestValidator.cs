@@ -7,9 +7,6 @@ public class MergePrRequestValidator : AbstractValidator<MergePrRequestDto>
 {
     public MergePrRequestValidator()
     {
-        RuleFor(x => x.RepositoryId)
-            .NotEmpty().WithMessage("Repository ID is required.");
-
         RuleFor(x => x.PullRequestNumber)
             .GreaterThan(0).WithMessage("Invalid PR number.");
 

@@ -76,7 +76,26 @@ public class AuthService : IAuthService
             user.AvatarUrl,
             user.Role.ToString(),
             user.CreatedAt,
-            isRuleSet
+            isRuleSet,
+            user.IsEmailAllowed
         );
+    }
+
+    public async Task<UserToggleEmailDto?> ToggleEmailAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+        if (user is null) return null;
+
+        user.IsEmailAllowed = !user.IsEmailAllowed;
+        user.UpdatedAt = DateTime.UtcNow;
+
+        await _userRepository.UpdateAsync(user, cancellationToken);
+        await _userRepository.SaveChangesAsync(cancellationToken);
+
+        var message = user.IsEmailAllowed
+            ? "Email notifications enabled successfully."
+            : "Email notifications disabled successfully.";
+
+        return new UserToggleEmailDto(user.Id, message, user.IsEmailAllowed);
     }
 }

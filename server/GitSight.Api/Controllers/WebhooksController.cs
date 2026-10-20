@@ -62,24 +62,24 @@ public class WebhooksController : ControllerBase
 
         _logger.LogInformation("Processing PR #{PrNumber} for {Owner}/{RepoName} via Webhook", prNumber, owner, repoName);
 
-        // Find tracking repository & associated user token
-        var repo = await _context.Repositories
-            .Include(r => r.User)
-            .FirstOrDefaultAsync(r => r.GitHubRepoId == repoId);
+        // Find user associated with owner or fallback to any active user with access token
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Username.ToLower() == owner.ToLower() && !string.IsNullOrEmpty(u.AccessToken))
+            ?? await _context.Users.FirstOrDefaultAsync(u => !string.IsNullOrEmpty(u.AccessToken));
 
-        if (repo is null || string.IsNullOrEmpty(repo.User?.AccessToken))
+        if (user is null || string.IsNullOrEmpty(user.AccessToken))
         {
-            _logger.LogWarning("Repository {Owner}/{RepoName} is not tracked or has no linked user token.", owner, repoName);
+            _logger.LogWarning("No user token found to process webhook for {Owner}/{RepoName}.", owner, repoName);
             return Ok(ApiResponse<string>.SuccessResponse("Repository not actively tracked.", "Repository skipped.", 200));
         }
 
         // Delegate PR analysis and email notifications to the service layer
         var session = await _pullRequestService.AnalyzePullRequestAsync(
-            repo.User.AccessToken,
+            user.AccessToken,
             owner,
             repoName,
             prNumber,
-            repo.User.Email,
+            user.Email,
             isWebhook: true);
 
         return Ok(ApiResponse<object>.SuccessResponse(new

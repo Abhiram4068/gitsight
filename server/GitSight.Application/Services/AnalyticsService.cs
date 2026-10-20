@@ -102,16 +102,6 @@ public class AnalyticsService : IAnalyticsService
 
                 totalPrs = allPrs.Count;
 
-                var dbRepos = await _context.Repositories.ToListAsync();
-                foreach (var pr in allPrs)
-                {
-                    var matchedDbRepo = dbRepos.FirstOrDefault(r => r.FullName.Equals(pr.RepositoryFullName, StringComparison.OrdinalIgnoreCase));
-                    if (matchedDbRepo != null)
-                    {
-                        pr.RepositoryId = matchedDbRepo.Id;
-                    }
-                }
-
                 // Load existing review sessions to enrich PR metadata
                 var sessions = await _context.AiReviewSessions
                     .Include(s => s.Issues)
@@ -146,12 +136,12 @@ public class AnalyticsService : IAnalyticsService
         // Fallbacks if GitHub token is empty or errored
         if (totalRepos == 0)
         {
-            totalRepos = await _context.Repositories.CountAsync();
+            totalRepos = await _context.PrInsights.Select(p => p.RepositoryFullName).Distinct().CountAsync();
         }
 
         if (totalPrs == 0)
         {
-            totalPrs = await _context.PullRequests.CountAsync() + await _context.PrInsights.CountAsync();
+            totalPrs = await _context.PrInsights.CountAsync();
         }
 
         dto.TotalRepos = totalRepos;

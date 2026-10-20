@@ -171,7 +171,7 @@ public class PullRequestsController : ControllerBase
     [HttpPost("merge")]
     public async Task<ActionResult<ApiResponse<bool>>> MergePullRequest([FromBody] MergePrRequestDto request)
     {
-        _logger.LogInformation("HTTP POST MergePullRequest initiated for PR #{PrNumber} in RepoId={RepositoryId}", request.PullRequestNumber, request.RepositoryId);
+        _logger.LogInformation("HTTP POST MergePullRequest initiated for PR #{PrNumber}", request.PullRequestNumber);
         var validationResult = await _mergeValidator.ValidateAsync(request);
         if (!validationResult.IsValid)
         {

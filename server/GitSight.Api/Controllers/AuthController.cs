@@ -68,4 +68,23 @@ public class AuthController : ControllerBase
 
         return Ok(ApiResponse<UserProfileDto>.SuccessResponse(profile, "User profile fetched successfully."));
     }
+
+    [Authorize]
+    [HttpPost("toggle-email")]
+    public async Task<ActionResult<ApiResponse<UserToggleEmailDto>>> ToggleEmail(CancellationToken cancellationToken = default)
+    {
+        var userId = _currentUserService.UserId;
+        if (!userId.HasValue)
+        {
+            return Unauthorized(ApiResponse<UserToggleEmailDto>.FailureResponse("User identity not found in token claims.", 401));
+        }
+
+        var result = await _authService.ToggleEmailAsync(userId.Value, cancellationToken);
+        if (result is null)
+        {
+            return NotFound(ApiResponse<UserToggleEmailDto>.FailureResponse("User not found.", 404));
+        }
+
+        return Ok(ApiResponse<UserToggleEmailDto>.SuccessResponse(result, result.Message));
+    }
 }

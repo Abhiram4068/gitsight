@@ -23,6 +23,17 @@ public class UserRepository : IUserRepository
         return await _context.Users.FirstOrDefaultAsync(u => u.GitHubId == gitHubId, cancellationToken);
     }
 
+    public async Task<bool> IsEmailAllowedAsync(string email, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return false;
+        }
+
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+        return user != null && user.IsEmailAllowed;
+    }
+
     public async Task AddAsync(User user, CancellationToken cancellationToken = default)
     {
         await _context.Users.AddAsync(user, cancellationToken);

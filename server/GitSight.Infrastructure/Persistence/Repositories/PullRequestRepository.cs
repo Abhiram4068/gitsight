@@ -17,11 +17,6 @@ public class PullRequestRepository : IPullRequestRepository
         _context = context;
     }
 
-    public async Task<Repository?> GetRepositoryByIdAsync(Guid id)
-    {
-        return await _context.Repositories.FirstOrDefaultAsync(r => r.Id == id);
-    }
-
     public async Task<List<PrInsight>> GetInsightsByRepoAsync(string repositoryFullName)
     {
         return await _context.PrInsights

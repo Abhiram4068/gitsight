@@ -58,16 +58,6 @@ public class PullRequestService : IPullRequestService
         string targetOwner = owner ?? string.Empty;
         string targetRepo = repo ?? string.Empty;
 
-        if (repositoryId.HasValue && (string.IsNullOrEmpty(targetOwner) || string.IsNullOrEmpty(targetRepo)))
-        {
-            var dbRepo = await _repository.GetRepositoryByIdAsync(repositoryId.Value);
-            if (dbRepo is not null)
-            {
-                targetOwner = dbRepo.Owner;
-                targetRepo = dbRepo.Name;
-            }
-        }
-
         if (!string.IsNullOrEmpty(repoFullName) && (string.IsNullOrEmpty(targetOwner) || string.IsNullOrEmpty(targetRepo)))
         {
             var parts = repoFullName.Split('/');
@@ -274,12 +264,11 @@ public class PullRequestService : IPullRequestService
             {
                 using var emailScope = _scopeFactory.CreateScope();
                 var dbContext = emailScope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
-                var trackedRepo = await dbContext.Repositories
-                    .Include(r => r.User)
-                    .FirstOrDefaultAsync(r => (r.Owner == owner && r.Name == repo) || r.FullName == $"{owner}/{repo}");
-                if (trackedRepo?.User?.Email != null)
+                var user = await dbContext.Users
+                    .FirstOrDefaultAsync(u => u.Username.ToLower() == owner.ToLower());
+                if (!string.IsNullOrWhiteSpace(user?.Email))
                 {
-                    recipientEmail = trackedRepo.User.Email;
+                    recipientEmail = user.Email;
                 }
             }
             catch (Exception ex)
@@ -506,20 +495,32 @@ public class PullRequestService : IPullRequestService
 
     public async Task<bool> MergePullRequestAsync(string token, MergePrRequestDto request)
     {
-        _logger.LogInformation("MergePullRequestAsync called for PR #{PrNumber} in Repo ID: {RepoId} with strategy: {Strategy}", 
-            request.PullRequestNumber, request.RepositoryId, request.MergeStrategy);
+        _logger.LogInformation("MergePullRequestAsync called for PR #{PrNumber} with strategy: {Strategy}", 
+            request.PullRequestNumber, request.MergeStrategy);
 
-        var repo = await _repository.GetRepositoryByIdAsync(request.RepositoryId);
-        if (repo is null)
+        string owner = request.Owner ?? string.Empty;
+        string repo = request.Repo ?? string.Empty;
+
+        if (!string.IsNullOrEmpty(request.RepositoryFullName) && (string.IsNullOrEmpty(owner) || string.IsNullOrEmpty(repo)))
         {
-            _logger.LogWarning("Repository ID {RepoId} not found during merge.", request.RepositoryId);
+            var parts = request.RepositoryFullName.Split('/');
+            if (parts.Length == 2)
+            {
+                owner = parts[0];
+                repo = parts[1];
+            }
+        }
+
+        if (string.IsNullOrEmpty(owner) || string.IsNullOrEmpty(repo))
+        {
+            _logger.LogWarning("Repository owner and repo must be provided for merge.");
             throw new KeyNotFoundException("Repository not found.");
         }
 
         var success = await _gitHubService.MergePullRequestAsync(
             token,
-            repo.Owner,
-            repo.Name,
+            owner,
+            repo,
             request.PullRequestNumber,
             request.MergeStrategy,
             request.CommitTitle
@@ -527,7 +528,7 @@ public class PullRequestService : IPullRequestService
 
         if (success)
         {
-            var fullRepoName = $"{repo.Owner}/{repo.Name}";
+            var fullRepoName = $"{owner}/{repo}";
             var insight = await _repository.GetInsightByPrNumberAsync(fullRepoName, request.PullRequestNumber);
             if (insight is not null)
             {
