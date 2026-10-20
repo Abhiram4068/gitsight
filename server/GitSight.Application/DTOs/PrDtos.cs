@@ -28,7 +28,10 @@ public class ReviewCommentDto
 
 public class MergePrRequestDto
 {
-    public Guid RepositoryId { get; set; }
+    public Guid? RepositoryId { get; set; }
+    public string? Owner { get; set; }
+    public string? Repo { get; set; }
+    public string? RepositoryFullName { get; set; }
     public int PullRequestNumber { get; set; }
     public string MergeStrategy { get; set; } = "squash"; // "squash", "merge", "rebase"
     public string? CommitTitle { get; set; }

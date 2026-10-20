@@ -26,13 +26,13 @@ export default function Login() {
       }
       // Redirect to dashboard upon successful login
       setTimeout(() => {
-        navigate('/dashboard', { replace: true });
+        navigate('/home', { replace: true });
       }, 500);
     } else {
       // If already logged in, redirect directly to dashboard
       const existingToken = authApi.getToken();
       if (existingToken) {
-        navigate('/dashboard', { replace: true });
+        navigate('/home', { replace: true });
       }
     }
   }, [searchParams, navigate]);
@@ -44,39 +44,55 @@ export default function Login() {
   };
 
   return (
-    <div className="bg-slate-50 text-slate-900 min-h-screen flex items-center justify-center p-4 font-sans antialiased selection:bg-slate-900 selection:text-white">
-      <div className="p-8 flex flex-col items-center justify-center space-y-10 max-w-sm w-full text-center -mt-24">
-        <div className="flex flex-col items-center space-y-4">
+    <div
+      className="relative min-h-screen flex items-center justify-center p-4 font-sans antialiased bg-[#0a0a0c] selection:bg-blue-600 selection:text-white overflow-hidden"
+      style={{
+        backgroundImage: `url('/login-bg.jpg')`,
+        backgroundRepeat: 'repeat',
+        backgroundSize: '480px 480px',
+      }}
+    >
+      {/* Subtle radial vignette overlay */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          background: 'radial-gradient(circle at center, rgba(10,10,12,0.35) 0%, rgba(10,10,12,0.85) 100%)',
+        }}
+      />
+
+      {/* Login Card */}
+      <div className=" z-10  backdrop-blur-xl border border-zinc-800/80 p-8 sm:p-10 rounded-lg shadow-2xl flex flex-col items-center justify-center space-y-8 max-w-sm w-full text-center">
+        <div className="flex flex-col items-center space-y-3">
           {/* Logo & Brand Header */}
-          <div className="inline-flex items-center justify-center space-x-2.5 text-slate-900 font-bold text-2xl tracking-tight">
+          <div className="inline-flex items-center justify-center space-x-2.5 text-white font-bold text-2xl tracking-tight">
             <img src="/gitsight.svg" alt="GitSight Logo" className="w-7 h-7 object-contain" />
             <span>GitSight Sign In</span>
           </div>
 
           <div>
-            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+            <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
               Catch issues before they reach production with AI-powered PR reviews.
             </p>
           </div>
         </div>
 
         {errorMessage && (
-          <div className="bg-red-50/80 border border-red-200/80 text-red-700 text-xs p-3 rounded-lg text-left shadow-sm">
+          <div className="w-full bg-red-950/50 border border-red-800/60 text-red-300 text-xs p-3 rounded-lg text-left shadow-sm">
             ⚠️ <strong>Authentication Error:</strong> {errorMessage}
           </div>
         )}
 
         {isProcessing ? (
           <div className="py-6 space-y-3">
-            <div className="w-6 h-6 border-2 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto"></div>
-            <p className="text-xs text-slate-600 font-medium tracking-wide">Authenticating with GitHub...</p>
+            <div className="w-6 h-6 border-2 border-zinc-600 border-t-white rounded-full animate-spin mx-auto"></div>
+            <p className="text-xs text-zinc-400 font-medium tracking-wide">Authenticating with GitHub...</p>
           </div>
         ) : (
-          <div className="w-full space-y-2.5">
+          <div className="w-full space-y-3">
             <button
               onClick={() => handleGitHubLogin('select_account')}
               type="button"
-              className="w-full flex items-center justify-center space-x-2.5 bg-slate-900 hover:bg-black active:scale-[0.99] text-white py-2.5 px-4 font-medium text-sm transition-all duration-150 shadow-md hover:shadow-lg cursor-pointer rounded-md"
+              className="w-full flex items-center justify-center space-x-2.5 bg-white hover:bg-zinc-100 active:scale-[0.99] text-zinc-900 py-2.5 px-4 font-semibold text-sm transition-all duration-150 shadow-md hover:shadow-lg cursor-pointer rounded-lg"
             >
               <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -87,7 +103,7 @@ export default function Login() {
               </svg>
               <span>Sign in with GitHub</span>
             </button>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[11px] text-zinc-500">
               You will be redirected to GitHub to choose or switch GitHub accounts.
             </p>
           </div>

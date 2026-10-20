@@ -147,7 +147,7 @@ public class PullRequestsController : ControllerBase
 
         try
         {
-            var session = await _pullRequestService.AnalyzePullRequestAsync(token, owner, repo, prNumber);
+            var session = await _pullRequestService.AnalyzePullRequestAsync(token, owner, repo, prNumber, _currentUserService.Email, isWebhook: false);
             _logger.LogInformation("Successfully completed AnalyzePullRequest for PR #{PrNumber}", prNumber);
             return Ok(ApiResponse<AiReviewSession>.SuccessResponse(session, "AI Code Review completed successfully."));
         }
@@ -171,7 +171,7 @@ public class PullRequestsController : ControllerBase
     [HttpPost("merge")]
     public async Task<ActionResult<ApiResponse<bool>>> MergePullRequest([FromBody] MergePrRequestDto request)
     {
-        _logger.LogInformation("HTTP POST MergePullRequest initiated for PR #{PrNumber} in RepoId={RepositoryId}", request.PullRequestNumber, request.RepositoryId);
+        _logger.LogInformation("HTTP POST MergePullRequest initiated for PR #{PrNumber}", request.PullRequestNumber);
         var validationResult = await _mergeValidator.ValidateAsync(request);
         if (!validationResult.IsValid)
         {

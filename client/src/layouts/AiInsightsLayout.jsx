@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Outlet, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { Outlet, useNavigate, useLocation, useSearchParams, Link } from 'react-router-dom';
 import { pullRequestsApi } from '../api/pullRequests';
 import { trackedIssuesApi } from '../api/trackedIssues';
 import StatusBadge from '../components/StatusBadge';
@@ -37,24 +37,48 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
   return (
     <header className="bg-white border-b border-gray-200 shrink-0 sticky top-0 z-20">
       {/* Top utility bar */}
-      <div className="px-4 sm:px-6 py-2 border-b border-gray-100 flex items-center justify-between bg-gray-100">
-        <button
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center text-xs font-medium text-gray-500 hover:text-gray-900 cursor-pointer"
-        >
-          &larr; {searchParams.get('from') === 'tracked' ? 'Back to Tracked Issues' : 'Back to Pull Request Details'}
-        </button>
-
-        {/* Mobile right-sidebar toggle */}
-        {onToggleSidebar && (
-          <button
-            onClick={onToggleSidebar}
-            className="lg:hidden flex items-center space-x-1 text-xs font-medium text-gray-500 hover:text-gray-900 border border-gray-300 px-2.5 py-1 rounded bg-white cursor-pointer"
+      <div className="px-4 sm:px-6 border-b border-gray-200 flex items-center justify-between bg-gray-100 h-9">
+        <div className="flex items-center h-full space-x-3">
+          <Link
+            to="/"
+            className="flex items-center space-x-1.5 text-xs text-blue-600 hover:underline hover:text-blue-700 font-medium cursor-pointer"
           >
-            <i className="fa-solid fa-sidebar text-[10px]"></i>
-            <span>Legend</span>
+            <i className="fa-solid fa-house text-xs"></i>
+            <span>Home</span>
+          </Link>
+
+          {/* Vertical divider touching top of utility bar and bottom border */}
+          <div className="h-full w-[1px] bg-gray-300"></div>
+
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center text-xs font-medium text-gray-600 hover:text-gray-900 cursor-pointer"
+          >
+            {searchParams.get('from') === 'tracked' ? 'Back to Tracked Issues' : 'Back to Pull Request Details'}
           </button>
-        )}
+          <div className="h-full w-[1px] bg-gray-300"></div>
+        </div>
+
+        <div className="flex items-center space-x-3">
+          {/* Mobile right-sidebar toggle */}
+          {onToggleSidebar && (
+            <button
+              onClick={onToggleSidebar}
+              className="lg:hidden flex items-center space-x-1 text-xs font-medium text-gray-500 hover:text-gray-900 border border-gray-300 px-2 py-0.5 rounded bg-white cursor-pointer"
+            >
+              <i className="fa-solid fa-sidebar text-[10px]"></i>
+              <span>Legend</span>
+            </button>
+          )}
+
+          <Link
+            className="flex items-center space-x-1.5 text-gray-800 hover:text-gray-950 transition-colors cursor-pointer select-none"
+            title="GitSight"
+          >
+            <img src="/gitsight.svg" alt="GitSight Logo" className="w-3.5 h-3.5 object-contain" />
+            <span className="text-xs font-bold tracking-wider">GitSight.</span>
+          </Link>
+        </div>
       </div>
       
       {/* PR Metadata bar */}
@@ -70,27 +94,31 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
                   {stats.repositoryFullName || (stats.htmlUrl && stats.htmlUrl.split('github.com/')[1]?.split('/pull')[0]) || "repository"}
                 </span>
               </div>
-              {isAnalyzed && (
-                <div className="flex items-center space-x-2">
-                  {insights?.isTracked ? (
-                    <button
-                      onClick={() => setShowUntrackModal(true)}
-                      className="inline-flex items-center space-x-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
-                      title="Stop tracking issues for this PR"
-                    >
-                      <span>Untrack Issues</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => setShowConfirmModal(true)}
-                      className="inline-flex items-center space-x-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
-                      title="Sync all active issues to track"
-                    >
-                      <span>Track Issues</span>
-                    </button>
-                  )}
-                </div>
-              )}
+  {isAnalyzed && (
+  <div className="flex items-center space-x-2">
+    {!insights?.issues || insights.issues.length === 0 ? (
+      <span className="text-xs italic text-gray-400 px-1.5 py-1.5">
+        No issues to track
+      </span>
+    ) : insights?.isTracked ? (
+      <button
+        onClick={() => setShowUntrackModal(true)}
+        className="inline-flex items-center space-x-1.5 text-xs font-medium text-red-600 hover:text-red-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
+        title="Stop tracking issues for this PR"
+      >
+        <span>Untrack Issues</span>
+      </button>
+    ) : (
+      <button
+        onClick={() => setShowConfirmModal(true)}
+        className="inline-flex items-center space-x-1.5 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline transition-colors shrink-0 cursor-pointer p-1.5"
+        title="Sync all active issues to track"
+      >
+        <span>Track Issues</span>
+      </button>
+    )}
+  </div>
+)}
             </div>
             
             <div className="flex flex-wrap items-center justify-between gap-y-1">
@@ -262,50 +290,60 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
 };
 
 const RightSidebar = () => (
-  <div className="p-5 space-y-8">
-
+  <div className="p-5 space-y-6 text-gray-800">
+    {/* Section 1: Confidence Score Ranges */}
     <div>
-      <h3 className="text-sm font-bold text-gray-900 mb-3 border-b pb-2 flex items-center space-x-2">
-        <span>Legend Guide</span>
+      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-3 flex items-center space-x-1.5">
+        <span>Confidence Score</span>
       </h3>
-      <div className="text-xs text-gray-600 space-y-4">
+      <p className="text-xs text-gray-500 mb-3 leading-relaxed">
+        AI-calculated certainty based on static diff analysis, security pattern matching, and rule compliance.
+      </p>
+
+      <div className="space-y-3">
         <div>
-          <span className="font-semibold text-gray-900 block mb-1">Confidence Score</span>
-          <p className="text-gray-500 leading-relaxed">
-            The AI's self-assessed certainty (0-100%) that the reported issues are valid bugs and not false positives.
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-bold text-emerald-600">85% – 100%</span>
+            <span className="text-gray-300">&bull;</span>
+            <span className="text-xs font-semibold text-gray-900">Ready to Merge</span>
+          </div>
+          <p className="text-gray-500 text-[11px] leading-relaxed mt-0.5">
+            High certainty. No blocking bugs or security threats detected.
           </p>
         </div>
-        
-        <div className="space-y-2">
-          <span className="font-semibold text-gray-900 block mb-1">Severity Levels</span>
-          <div className="flex items-start space-x-2">
-            <span className="w-2 h-2 rounded-full bg-red-600 mt-1 shrink-0"></span>
-            <p><span className="font-semibold text-gray-800">High (7-10):</span> Critical security vulnerabilities or breaking bugs that must be fixed.</p>
+
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-bold text-amber-600">60% – 84%</span>
+            <span className="text-gray-300">&bull;</span>
+            <span className="text-xs font-semibold text-gray-900">Needs Review</span>
           </div>
-          <div className="flex items-start space-x-2">
-            <span className="w-2 h-2 rounded-full bg-amber-500 mt-1 shrink-0"></span>
-            <p><span className="font-semibold text-gray-800">Medium (4-6):</span> Code smells, performance regressions, or bad architectural practices.</p>
+          <p className="text-gray-500 text-[11px] leading-relaxed mt-0.5">
+            Potential issues found. Peer verification recommended before merge.
+          </p>
+        </div>
+
+        <div>
+          <div className="flex items-center space-x-2">
+            <span className="text-xs font-bold text-red-600">&lt; 60%</span>
+            <span className="text-gray-300">&bull;</span>
+            <span className="text-xs font-semibold text-gray-900">Requires Audit</span>
           </div>
-          <div className="flex items-start space-x-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 mt-1 shrink-0"></span>
-            <p><span className="font-semibold text-gray-800">Low (1-3):</span> Suggestions for code readability or test coverage improvements.</p>
-          </div>
+          <p className="text-gray-500 text-[11px] leading-relaxed mt-0.5">
+            High risk or unverified patterns. Thorough manual audit required.
+          </p>
         </div>
       </div>
     </div>
 
-    <div>
-      <h3 className="text-sm font-bold text-gray-900 mb-3 border-b pb-2 flex items-center space-x-2">
-        <span>Warning</span>
+    {/* Section 3: Professional Advisory */}
+    <div className="pt-2 border-t border-gray-200">
+      <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-2 flex items-center space-x-1.5">
+        <span>Review Advisory</span>
       </h3>
-      <div className="text-xs text-gray-500 space-y-2 leading-relaxed">
-        <p>
-          GitSight AI can make mistakes. All insights and generated code should be carefully validated.
-        </p>
-        <p>
-          Ensure that any accepted changes adhere to your organization's specific coding standards and security guidelines. This tool provides a general overview and is not a substitute for thorough manual review.
-        </p>
-      </div>
+      <p className="text-[11px] text-gray-500 leading-relaxed">
+        AI insights serve as an automated preliminary check. Always validate critical suggestions alongside team standards and CI test pipelines.
+      </p>
     </div>
   </div>
 );
@@ -345,6 +383,12 @@ export default function AiInsightsLayout() {
     ? new Date(insights.createdAt.endsWith('Z') ? insights.createdAt : insights.createdAt + 'Z') 
     : new Date();
 
+  const totalIssues = insights?.issues?.length ?? insights?.finalSuggestionsCount ?? 0;
+  const rawScore = insights?.overallConfidenceScore ?? 0;
+  const formattedConfidence = rawScore > 0 && rawScore <= 1
+    ? Math.round(rawScore * 100)
+    : Math.round(rawScore);
+
   return (
     <div className="bg-gray-50 text-gray-900 h-screen flex flex-col font-sans overflow-hidden">
       <AiNavbar
@@ -368,17 +412,28 @@ export default function AiInsightsLayout() {
         {/* Main Content Area */}
         <main className="flex-1 overflow-y-auto custom-scrollbar">
           {stats && insights && (
-            <div className="bg-amber-50 border-b border-amber-200 w-full">
-              <div className="px-4 sm:px-6 py-2 text-amber-800 text-xs font-medium flex items-center">
-                <i className="fa-solid fa-circle-exclamation mr-2 text-amber-500 text-sm"></i>
-                <div>
-                PR #{stats.prNumber} (reviewed at {reviewedAt.toLocaleString()}) &bull; Confidence: <span className="font-bold text-amber-900">{insights.overallConfidenceScore || 0}%</span>. Please validate reported issues (if any) before applying changes &bull; Suggestions can be safely ignored if not applicable.
+            totalIssues === 0 ? (
+              <div className="bg-emerald-50 border-b border-emerald-200 w-full">
+                <div className="px-4 sm:px-6 py-2 text-emerald-800 text-xs font-medium flex items-center">
+                  <i className="fa-solid fa-circle-check mr-2 text-emerald-600 text-sm"></i>
+                  <div>
+                    PR #{stats.prNumber} (reviewed at {reviewedAt.toLocaleString()}) &bull; <span className="font-semibold text-emerald-900">Clean Review</span>: 0 potential issues found &bull; All automated checks passed.
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div className="bg-amber-50 border-b border-amber-200 w-full">
+                <div className="px-4 sm:px-6 py-2 text-amber-800 text-xs font-medium flex items-center">
+                  <i className="fa-solid fa-circle-exclamation mr-2 text-amber-500 text-sm"></i>
+                  <div>
+                    PR #{stats.prNumber} (reviewed at {reviewedAt.toLocaleString()}) &bull; Confidence: <span className="font-bold text-amber-900">{formattedConfidence}%</span>. Please validate reported issues before applying changes &bull; Suggestions can be safely ignored if not applicable.
+                  </div>
+                </div>
+              </div>
+            )
           )}
           <div className="max-w-5xl mx-auto p-4 sm:p-6 space-y-6">
-            <Outlet context={{ setInsights, stats }} />
+            <Outlet context={{ setInsights, stats, globalInsights: insights }} />
           </div>
         </main>
         

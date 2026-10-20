@@ -1,10 +1,42 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { authApi } from '../api/auth';
 
 export default function Header({ user, loading, onLogout, onMenuToggle, sidebarOpen }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
-  const [allowEmailNotifications, setAllowEmailNotifications] = useState(true);
+  const [allowEmailNotifications, setAllowEmailNotifications] = useState(
+    user?.isEmailAllowed !== undefined ? user.isEmailAllowed : false
+  );
+  const [isTogglingEmail, setIsTogglingEmail] = useState(false);
+
+  useEffect(() => {
+    if (user && typeof user.isEmailAllowed === 'boolean') {
+      setAllowEmailNotifications(user.isEmailAllowed);
+    }
+  }, [user?.isEmailAllowed]);
+
+  const handleToggleEmail = async () => {
+    if (isTogglingEmail) return;
+    setIsTogglingEmail(true);
+    const previousState = allowEmailNotifications;
+    setAllowEmailNotifications(!previousState);
+
+    try {
+      const data = await authApi.toggleEmail();
+      if (data && typeof data.isEmailAllowed === 'boolean') {
+        setAllowEmailNotifications(data.isEmailAllowed);
+        if (user) {
+          user.isEmailAllowed = data.isEmailAllowed;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle email notifications:', error);
+      setAllowEmailNotifications(previousState);
+    } finally {
+      setIsTogglingEmail(false);
+    }
+  };
 
   const dropdownRef = useRef(null);
   const notificationRef = useRef(null);
@@ -100,8 +132,9 @@ export default function Header({ user, loading, onLogout, onMenuToggle, sidebarO
                   type="button"
                   role="switch"
                   aria-checked={allowEmailNotifications}
-                  onClick={() => setAllowEmailNotifications((prev) => !prev)}
-                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                  disabled={isTogglingEmail}
+                  onClick={handleToggleEmail}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed ${
                     allowEmailNotifications ? 'bg-gray-700' : 'bg-gray-300'
                   }`}
                 >

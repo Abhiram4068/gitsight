@@ -8,6 +8,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -21,6 +23,9 @@ public class PullRequestService : IPullRequestService
     private readonly IRuleService _ruleService;
     private readonly ILogger<PullRequestService> _logger;
     private readonly IServiceScopeFactory _scopeFactory;
+    private readonly IEmailService _emailService;
+    private readonly IConfiguration _configuration;
+    private readonly ICurrentUserService _currentUserService;
 
     public PullRequestService(
         IPullRequestRepository repository,
@@ -28,7 +33,10 @@ public class PullRequestService : IPullRequestService
         IAiReviewService aiReviewService,
         IRuleService ruleService,
         ILogger<PullRequestService> logger,
-        IServiceScopeFactory scopeFactory)
+        IServiceScopeFactory scopeFactory,
+        IEmailService emailService,
+        IConfiguration configuration,
+        ICurrentUserService currentUserService)
     {
         _repository = repository;
         _gitHubService = gitHubService;
@@ -36,6 +44,9 @@ public class PullRequestService : IPullRequestService
         _ruleService = ruleService;
         _logger = logger;
         _scopeFactory = scopeFactory;
+        _emailService = emailService;
+        _configuration = configuration;
+        _currentUserService = currentUserService;
     }
 
     public async Task<PaginatedResponseDto<PullRequestDto>> GetPullRequestsAsync(
@@ -46,16 +57,6 @@ public class PullRequestService : IPullRequestService
 
         string targetOwner = owner ?? string.Empty;
         string targetRepo = repo ?? string.Empty;
-
-        if (repositoryId.HasValue && (string.IsNullOrEmpty(targetOwner) || string.IsNullOrEmpty(targetRepo)))
-        {
-            var dbRepo = await _repository.GetRepositoryByIdAsync(repositoryId.Value);
-            if (dbRepo is not null)
-            {
-                targetOwner = dbRepo.Owner;
-                targetRepo = dbRepo.Name;
-            }
-        }
 
         if (!string.IsNullOrEmpty(repoFullName) && (string.IsNullOrEmpty(targetOwner) || string.IsNullOrEmpty(targetRepo)))
         {
@@ -251,9 +252,44 @@ public class PullRequestService : IPullRequestService
         }
     }
 
-    public async Task<AiReviewSession> AnalyzePullRequestAsync(string token, string owner, string repo, int prNumber)
+    public async Task<AiReviewSession> AnalyzePullRequestAsync(string token, string owner, string repo, int prNumber, string? userEmail = null, bool isWebhook = false)
     {
-        _logger.LogInformation("Starting AI analysis for PR #{PrNumber} in {Owner}/{Repo}", prNumber, owner, repo);
+        _logger.LogInformation("Starting AI analysis for PR #{PrNumber} in {Owner}/{Repo} (isWebhook: {IsWebhook})", prNumber, owner, repo, isWebhook);
+
+        // Resolve recipient email address
+        var recipientEmail = !string.IsNullOrWhiteSpace(userEmail) ? userEmail : _currentUserService.Email;
+        if (string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            try
+            {
+                using var emailScope = _scopeFactory.CreateScope();
+                var dbContext = emailScope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+                var user = await dbContext.Users
+                    .FirstOrDefaultAsync(u => u.Username.ToLower() == owner.ToLower());
+                if (!string.IsNullOrWhiteSpace(user?.Email))
+                {
+                    recipientEmail = user.Email;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to resolve repository owner email from DB for {Owner}/{Repo}", owner, repo);
+            }
+        }
+
+        // Send email: PR review started
+        if (!string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            try
+            {
+                _logger.LogInformation("Sending PR review started email to {Email} for PR #{PrNumber}", recipientEmail, prNumber);
+                await _emailService.SendPrReviewStartedEmailAsync(recipientEmail, owner, repo, prNumber);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send PR review started email to {Email}", recipientEmail);
+            }
+        }
         var existingSession = await _repository.GetAiReviewSessionAsync(owner, repo, prNumber, includeIssues: true);
         if (existingSession != null)
         {
@@ -401,6 +437,7 @@ public class PullRequestService : IPullRequestService
             CodeSmellsCount = analysisDto.CodeSmellsCount,
             TestCoverageImpact = analysisDto.TestCoverageImpact,
             CodeComplexity = analysisDto.CodeComplexity,
+            IsWebhook = isWebhook,
             Issues = analysisDto.Issues.Select(i => new AiReviewIssue
             {
                 FilePath = i.FilePath,
@@ -437,25 +474,53 @@ public class PullRequestService : IPullRequestService
             await freshRepo.SaveAnalysisResultsAsync(freshInsight.Id, session.ExecutiveSummary, riskLevel, comments);
         }
 
+        // Send email: PR review completed with direct link to the PR insights page
+        if (!string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            try
+            {
+                var frontendBaseUrl = _configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+                var prInsightUrl = $"{frontendBaseUrl.TrimEnd('/')}/pr-ai-insights?repo={Uri.EscapeDataString(owner + "/" + repo)}&pr={prNumber}";
+                _logger.LogInformation("Sending PR review completed email to {Email} with URL: {Url}", recipientEmail, prInsightUrl);
+                await _emailService.SendPrReviewCompletedEmailAsync(recipientEmail, owner, repo, prNumber, prInsightUrl);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to send PR review completed email to {Email}", recipientEmail);
+            }
+        }
+
         return session;
     }
 
     public async Task<bool> MergePullRequestAsync(string token, MergePrRequestDto request)
     {
-        _logger.LogInformation("MergePullRequestAsync called for PR #{PrNumber} in Repo ID: {RepoId} with strategy: {Strategy}", 
-            request.PullRequestNumber, request.RepositoryId, request.MergeStrategy);
+        _logger.LogInformation("MergePullRequestAsync called for PR #{PrNumber} with strategy: {Strategy}", 
+            request.PullRequestNumber, request.MergeStrategy);
 
-        var repo = await _repository.GetRepositoryByIdAsync(request.RepositoryId);
-        if (repo is null)
+        string owner = request.Owner ?? string.Empty;
+        string repo = request.Repo ?? string.Empty;
+
+        if (!string.IsNullOrEmpty(request.RepositoryFullName) && (string.IsNullOrEmpty(owner) || string.IsNullOrEmpty(repo)))
         {
-            _logger.LogWarning("Repository ID {RepoId} not found during merge.", request.RepositoryId);
+            var parts = request.RepositoryFullName.Split('/');
+            if (parts.Length == 2)
+            {
+                owner = parts[0];
+                repo = parts[1];
+            }
+        }
+
+        if (string.IsNullOrEmpty(owner) || string.IsNullOrEmpty(repo))
+        {
+            _logger.LogWarning("Repository owner and repo must be provided for merge.");
             throw new KeyNotFoundException("Repository not found.");
         }
 
         var success = await _gitHubService.MergePullRequestAsync(
             token,
-            repo.Owner,
-            repo.Name,
+            owner,
+            repo,
             request.PullRequestNumber,
             request.MergeStrategy,
             request.CommitTitle
@@ -463,7 +528,7 @@ public class PullRequestService : IPullRequestService
 
         if (success)
         {
-            var fullRepoName = $"{repo.Owner}/{repo.Name}";
+            var fullRepoName = $"{owner}/{repo}";
             var insight = await _repository.GetInsightByPrNumberAsync(fullRepoName, request.PullRequestNumber);
             if (insight is not null)
             {

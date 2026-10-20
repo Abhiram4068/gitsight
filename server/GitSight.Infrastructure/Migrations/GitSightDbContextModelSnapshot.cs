@@ -187,116 +187,6 @@ namespace GitSight.Infrastructure.Migrations
                     b.ToTable("PrInsights");
                 });
 
-            modelBuilder.Entity("GitSight.Domain.Entities.PullRequest", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("AiSummary")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("BaseBranch")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("Description")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("DiffContent")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("HeadBranch")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("HeadSha")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.Property<int>("PrNumber")
-                        .HasColumnType("int");
-
-                    b.Property<Guid>("RepositoryId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<string>("RiskLevel")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<int>("State")
-                        .HasColumnType("int");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("nvarchar(500)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("RepositoryId", "PrNumber")
-                        .IsUnique();
-
-                    b.ToTable("PullRequests");
-                });
-
-            modelBuilder.Entity("GitSight.Domain.Entities.Repository", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("FullName")
-                        .IsRequired()
-                        .HasMaxLength(400)
-                        .HasColumnType("nvarchar(400)");
-
-                    b.Property<long>("GitHubRepoId")
-                        .HasColumnType("bigint");
-
-                    b.Property<bool>("IsPrivate")
-                        .HasColumnType("bit");
-
-                    b.Property<bool>("IsTracked")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
-
-                    b.Property<string>("Owner")
-                        .IsRequired()
-                        .HasMaxLength(150)
-                        .HasColumnType("nvarchar(150)");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<long?>("WebhookId")
-                        .HasColumnType("bigint");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("GitHubRepoId");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("Repositories");
-                });
-
             modelBuilder.Entity("GitSight.Domain.Entities.ReviewComment", b =>
                 {
                     b.Property<Guid>("Id")
@@ -499,6 +389,9 @@ namespace GitSight.Infrastructure.Migrations
                     b.Property<long>("GitHubId")
                         .HasColumnType("bigint");
 
+                    b.Property<bool>("IsEmailAllowed")
+                        .HasColumnType("bit");
+
                     b.Property<int>("Role")
                         .HasColumnType("int");
 
@@ -527,28 +420,6 @@ namespace GitSight.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Session");
-                });
-
-            modelBuilder.Entity("GitSight.Domain.Entities.PullRequest", b =>
-                {
-                    b.HasOne("GitSight.Domain.Entities.Repository", "Repository")
-                        .WithMany("PullRequests")
-                        .HasForeignKey("RepositoryId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Repository");
-                });
-
-            modelBuilder.Entity("GitSight.Domain.Entities.Repository", b =>
-                {
-                    b.HasOne("GitSight.Domain.Entities.User", "User")
-                        .WithMany("Repositories")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("GitSight.Domain.Entities.ReviewComment", b =>
@@ -592,16 +463,6 @@ namespace GitSight.Infrastructure.Migrations
             modelBuilder.Entity("GitSight.Domain.Entities.PrInsight", b =>
                 {
                     b.Navigation("Comments");
-                });
-
-            modelBuilder.Entity("GitSight.Domain.Entities.Repository", b =>
-                {
-                    b.Navigation("PullRequests");
-                });
-
-            modelBuilder.Entity("GitSight.Domain.Entities.User", b =>
-                {
-                    b.Navigation("Repositories");
                 });
 #pragma warning restore 612, 618
         }

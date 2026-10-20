@@ -7,7 +7,6 @@ namespace GitSight.Application.Common.Interfaces;
 
 public interface IPullRequestRepository
 {
-    Task<Repository?> GetRepositoryByIdAsync(Guid id);
     Task<List<PrInsight>> GetInsightsByRepoAsync(string repositoryFullName);
     Task<PrInsight?> GetInsightByIdAsync(Guid id, bool includeComments = false);
     Task<PrInsight?> GetInsightByPrNumberAsync(string repositoryFullName, int prNumber, bool includeComments = false);

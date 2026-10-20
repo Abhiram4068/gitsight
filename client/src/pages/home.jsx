@@ -361,7 +361,7 @@ export default function Dashboard() {
                 ) : (
                   <tr>
                     <td colSpan="5" className="py-14 text-center text-xs text-gray-500">
-                      <div className="w-10 h-10 rounded-full bg-gray-100 text-gray-400 mx-auto flex items-center justify-center text-sm mb-2">
+                      <div className="w-10 h-10 text-gray-400 mx-auto flex items-center justify-center text-sm mb-2">
                         <i className="fa-solid fa-code-pull-request"></i>
                       </div>
                       No pull requests found yet across your connected repositories.

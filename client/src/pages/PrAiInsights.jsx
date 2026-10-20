@@ -83,18 +83,13 @@ import { pullRequestsApi } from "../api/pullRequests";
 
 export default function PrAiInsights() {
   const navigate = useNavigate();
-  const { setInsights: setGlobalInsights, stats } = useOutletContext();
+  const { setInsights: setGlobalInsights, stats, globalInsights } = useOutletContext();
+  const [prStats, setPrStats] = useState(stats || null);
+
+  useEffect(() => {
+    if (stats) setPrStats(stats);
+  }, [stats]);
   const [isLoading, setIsLoading] = useState(true);
-  const [loadingPhrase] = useState(() => {
-    const phrases = [
-      "Analyzing...",
-      "Processing...",
-      "Working...",
-      "Inspecting...",
-      "Reviewing...",
-    ];
-    return phrases[Math.floor(Math.random() * phrases.length)];
-  });
   const [isGenerating, setIsGenerating] = useState(false);
   const [reviewFailed, setReviewFailed] = useState(false);
   const [reviewErrorMessage, setReviewErrorMessage] = useState("");
@@ -106,6 +101,21 @@ export default function PrAiInsights() {
   const [postedIssues, setPostedIssues] = useState(new Set());
   const [postErrors, setPostErrors] = useState({});
   const [toastNotification, setToastNotification] = useState(null);
+  const [wordIndex, setWordIndex] = useState(0);
+
+  const LOADING_WORDS = ["Analyzing", "code", "changes", "thoroughly", "now"];
+
+  useEffect(() => {
+    if (!isLoading && !isGenerating && insights) return;
+
+    const timer = setInterval(() => {
+      setWordIndex((prev) => (prev < LOADING_WORDS.length - 1 ? prev + 1 : prev));
+    }, 7000);
+
+    return () => clearInterval(timer);
+  }, [isLoading, isGenerating, insights]);
+
+  const loadingPhrase = `${LOADING_WORDS.slice(0, wordIndex + 1).join(" ")}...`;
   const hasFetched = useRef(false);
   const location = useLocation();
   const [searchParams] = useSearchParams();
@@ -114,6 +124,13 @@ export default function PrAiInsights() {
   const prNumberParam = location.state?.prNumberParam || searchParams.get("pr");
   const issueIdParam = searchParams.get("issue");
   const isFromTracked = searchParams.get("from") === "tracked";
+  const isPrTracked = Boolean(
+    prStats?.isTracked ||
+    stats?.isTracked ||
+    insights?.isTracked ||
+    globalInsights?.isTracked ||
+    isFromTracked
+  );
 
   const modalConfig = {
     export: {
@@ -146,6 +163,7 @@ export default function PrAiInsights() {
       if (!currentStats?.analysisStatus) {
         try {
           currentStats = await pullRequestsApi.getPrStats({ owner, repo, prNumber: prNumberParam });
+          if (currentStats) setPrStats(currentStats);
         } catch (e) {
           console.warn("Could not fetch current PR stats:", e);
         }
@@ -218,6 +236,7 @@ export default function PrAiInsights() {
   };
 
   const toggleIgnore = async (id) => {
+    if (isPrTracked) return;
     const willBeIgnored = !ignoredIssues.has(id);
 
     // Optimistic UI update
@@ -343,34 +362,6 @@ export default function PrAiInsights() {
     fetchInsights();
   }, [repoParam, prNumberParam]);
 
-  // Poll for insights if the analysis is still in progress
-  useEffect(() => {
-    if (insights || reviewFailed || !repoParam || !prNumberParam) return;
-    const interval = setInterval(async () => {
-      const [owner, repo] = repoParam.split("/");
-      try {
-        const data = await pullRequestsApi.getInsights({
-          owner,
-          repo,
-          prNumber: prNumberParam,
-        });
-        if (data) {
-          const dataWithStatus = { ...data, analysisStatus: "analyzed" };
-          setInsights(dataWithStatus);
-          setGlobalInsights(dataWithStatus);
-          setIsLoading(false);
-          setReviewFailed(false);
-        }
-      } catch (err) {
-        if (err.response?.status === 422 || err.response?.data?.message?.toLowerCase().includes("failed")) {
-          setReviewFailed(true);
-          setReviewErrorMessage(err.response?.data?.message || "The last review was failed. Click to retry again.");
-          setIsLoading(false);
-        }
-      }
-    }, 3000);
-    return () => clearInterval(interval);
-  }, [insights, reviewFailed, repoParam, prNumberParam]);
 
   // Synchronize posted and ignored issues from database API response
   useEffect(() => {
@@ -462,7 +453,7 @@ export default function PrAiInsights() {
         </h2>
         <p className="text-xs text-gray-500 mt-1 max-w-sm text-center">
           {isGenerating 
-            ? "AI Code Review analysis in progress (timeout limit: 3 minutes)..." 
+            ? "AI Code Review analysis in progress..." 
             : "Loading pull request insights..."}
         </p>
 
@@ -470,7 +461,7 @@ export default function PrAiInsights() {
         <div className="mt-5">
           <button
             onClick={handleReturn}
-            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium rounded-md shadow-xs transition-colors cursor-pointer"
+            className="inline-flex items-center space-x-1.5 px-3.5 py-1.5 bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 text-xs font-medium  transition-colors cursor-pointer"
           >
             <i className="fa-solid fa-arrow-left text-[11px]"></i>
             <span>Return to PR Details</span>
@@ -595,7 +586,7 @@ export default function PrAiInsights() {
 
                 {/* Review Card */}
                 <div
-                  className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-all duration-500 ${ignoredIssues.has(thread.id) ? "opacity-50 grayscale" : ""}`}
+                  className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-all duration-500 ${!isPrTracked && ignoredIssues.has(thread.id) ? "opacity-50 grayscale" : ""}`}
                 >
                   {/* Diff Context Header */}
                   <div className="bg-gray-100/70 px-3 py-2 border-b border-gray-200 flex items-center justify-between font-mono text-xs text-gray-600">
@@ -607,8 +598,8 @@ export default function PrAiInsights() {
                         Lines +{thread.startLine} to +{thread.endLine}
                       </span>
 
-                      {/* Minimalist Ignore Toggle */}
-                      {!isFromTracked && (
+                      {/* Minimalist Ignore Toggle — Hidden if PR is already tracked */}
+                      {!isPrTracked && (
                         <button
                           disabled={togglingIgnoreId === thread.id}
                           onClick={() => toggleIgnore(thread.id)}

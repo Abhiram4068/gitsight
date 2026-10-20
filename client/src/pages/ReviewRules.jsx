@@ -211,9 +211,9 @@ export default function ReviewRules() {
           ) : rules.length === 0 ? (
             <div className="p-12 text-center text-gray-500">
               <i className="fa-solid fa-list-check text-2xl text-gray-400 mb-2"></i>
-              <p className="text-xs font-semibold text-gray-800">No Rules Found in Database</p>
+              <p className="text-xs font-semibold text-gray-800">No Rules Found.</p>
               <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
-                Please run your EF migration and seed the rules using the SQL script provided.
+The system cant find any rules at the moment.
               </p>
             </div>
           ) : (

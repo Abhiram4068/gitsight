@@ -13,22 +13,16 @@ namespace GitSight.Api.Controllers;
 public class WebhooksController : ControllerBase
 {
     private readonly IApplicationDbContext _context;
-    private readonly IGitHubService _gitHubService;
-    private readonly IAiReviewService _aiReviewService;
-    private readonly IRuleService _ruleService;
+    private readonly IPullRequestService _pullRequestService;
     private readonly ILogger<WebhooksController> _logger;
 
     public WebhooksController(
         IApplicationDbContext context,
-        IGitHubService gitHubService,
-        IAiReviewService aiReviewService,
-        IRuleService ruleService,
+        IPullRequestService pullRequestService,
         ILogger<WebhooksController> logger)
     {
         _context = context;
-        _gitHubService = gitHubService;
-        _aiReviewService = aiReviewService;
-        _ruleService = ruleService;
+        _pullRequestService = pullRequestService;
         _logger = logger;
     }
 
@@ -66,121 +60,35 @@ public class WebhooksController : ControllerBase
         var repoName = repoElement.GetProperty("name").GetString()!;
         var owner = repoElement.GetProperty("owner").GetProperty("login").GetString()!;
 
-        _logger.LogInformation("Processing PR #{PrNumber} for {Owner}/{RepoName}", prNumber, owner, repoName);
+        _logger.LogInformation("Processing PR #{PrNumber} for {Owner}/{RepoName} via Webhook", prNumber, owner, repoName);
 
-        // Find tracking repository & associated user token
-        var repo = await _context.Repositories
-            .Include(r => r.User)
-            .FirstOrDefaultAsync(r => r.GitHubRepoId == repoId);
+        // Find user associated with owner or fallback to any active user with access token
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Username.ToLower() == owner.ToLower() && !string.IsNullOrEmpty(u.AccessToken))
+            ?? await _context.Users.FirstOrDefaultAsync(u => !string.IsNullOrEmpty(u.AccessToken));
 
-        if (repo is null || string.IsNullOrEmpty(repo.User?.AccessToken))
+        if (user is null || string.IsNullOrEmpty(user.AccessToken))
         {
-            _logger.LogWarning("Repository {Owner}/{RepoName} is not tracked or has no linked user token.", owner, repoName);
+            _logger.LogWarning("No user token found to process webhook for {Owner}/{RepoName}.", owner, repoName);
             return Ok(ApiResponse<string>.SuccessResponse("Repository not actively tracked.", "Repository skipped.", 200));
         }
 
-        // 1. Fetch diff from GitHub
-        var diff = await _gitHubService.GetPullRequestDiffAsync(repo.User.AccessToken, owner, repoName, prNumber);
-
-        var fullRepoName = $"{owner}/{repoName}";
-
-        // 2. Fetch custom rules if configured
-        List<string>? customRules = null;
-        try
-        {
-            customRules = await _ruleService.GetActiveRulePromptsForRepoAsync(fullRepoName);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load custom rules for webhook PR in {Repo}", fullRepoName);
-        }
-
-        // 3. Analyze diff using AI Review Service
-        var aiResult = await _aiReviewService.AnalyzeDiffAsync(diff, prTitle, prBody, customRules);
-
-        // 4. Save or update PrInsight
-        var insight = await _context.PrInsights
-            .Include(p => p.Comments)
-            .FirstOrDefaultAsync(p => p.RepositoryFullName == fullRepoName && p.PrNumber == prNumber);
-
-        if (insight is null)
-        {
-            insight = new PrInsight
-            {
-                RepositoryFullName = fullRepoName,
-                PrNumber = prNumber,
-                AiSummary = aiResult.ExecutiveSummary,
-                RiskLevel = aiResult.OverallConfidenceScore > 0.8m ? "Low" : "High",
-                Status = PrInsightStatus.Analyzed
-            };
-            _context.PrInsights.Add(insight);
-        }
-        else
-        {
-            insight.AiSummary = aiResult.ExecutiveSummary;
-            insight.RiskLevel = aiResult.OverallConfidenceScore > 0.8m ? "Low" : "High";
-            insight.UpdatedAt = DateTime.UtcNow;
-            insight.Status = PrInsightStatus.Analyzed;
-
-            // Clear previous draft comments
-            _context.ReviewComments.RemoveRange(insight.Comments.Where(c => !c.IsPostedToGitHub));
-        }
-
-        // 4. Add AI suggestions
-        foreach (var comment in aiResult.Issues)
-        {
-            insight.Comments.Add(new ReviewComment
-            {
-                FilePath = comment.FilePath,
-                LineNumber = comment.StartLine,
-                Side = "RIGHT",
-                Comment = comment.Comment,
-                SuggestedCode = comment.SuggestedAddedCode,
-                Severity = Enum.TryParse<ReviewSeverity>(comment.Severity, true, out var sev) ? sev : ReviewSeverity.Info,
-                IsAiGenerated = true,
-                IsPostedToGitHub = false
-            });
-        }
-        
-        // Save AiReviewSession to track detailed analytics
-        var session = new AiReviewSession
-        {
-            Owner = owner,
-            Repo = repoName,
-            PrNumber = prNumber,
-            ExecutiveSummary = aiResult.ExecutiveSummary,
-            OverallConfidenceScore = aiResult.OverallConfidenceScore,
-            FinalSuggestionsCount = aiResult.FinalSuggestionsCount,
-            SecurityIssuesCount = aiResult.SecurityIssuesCount,
-            SyntaxErrorsCount = aiResult.SyntaxErrorsCount,
-            BreachesCount = aiResult.BreachesCount,
-            PerformanceIssuesCount = aiResult.PerformanceIssuesCount,
-            CodeSmellsCount = aiResult.CodeSmellsCount,
-            TestCoverageImpact = aiResult.TestCoverageImpact,
-            CodeComplexity = aiResult.CodeComplexity,
-            IsWebhook = true,
-            Issues = aiResult.Issues.Select(i => new AiReviewIssue
-            {
-                FilePath = i.FilePath,
-                StartLine = i.StartLine,
-                EndLine = i.EndLine,
-                Comment = i.Comment,
-                IssueType = i.IssueType,
-                Severity = i.Severity,
-                SuggestedRemovedCode = i.SuggestedRemovedCode,
-                SuggestedAddedCode = i.SuggestedAddedCode
-            }).ToList()
-        };
-        _context.AiReviewSessions.Add(session);
-
-        await _context.SaveChangesAsync();
+        // Delegate PR analysis and email notifications to the service layer
+        var session = await _pullRequestService.AnalyzePullRequestAsync(
+            user.AccessToken,
+            owner,
+            repoName,
+            prNumber,
+            user.Email,
+            isWebhook: true);
 
         return Ok(ApiResponse<object>.SuccessResponse(new
         {
-            prInsightId = insight.Id,
+            owner,
+            repo = repoName,
             prNumber,
-            summary = aiResult.ExecutiveSummary,
-            commentsGenerated = aiResult.Issues.Count
+            summary = session.ExecutiveSummary,
+            commentsGenerated = session.Issues.Count
         }, "PR successfully reviewed by GitSight Agent."));
     }
 }
