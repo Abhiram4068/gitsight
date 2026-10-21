@@ -134,14 +134,14 @@ export default function Repositories() {
       </div>
 
       {/* Controls Bar: Type Filter Tabs & Search Bar */}
-      <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
+      <div className="flex flex-col md:flex-row flex-wrap gap-2.5 sm:gap-3 items-stretch md:items-center justify-between bg-gray-50 p-2.5 sm:p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
         {/* Type Tabs: All, Public, Private */}
-        <div className="flex items-center space-x-1 bg-white p-0.5 border border-gray-300 rounded">
+        <div className="flex items-center space-x-1 bg-white p-0.5 border border-gray-300 rounded overflow-x-auto w-full md:w-auto">
           {['All', 'Public', 'Private'].map((type) => (
             <button
               key={type}
               onClick={() => handleRoleFilterChange(type)}
-              className={`px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer ${
+              className={`flex-1 md:flex-initial px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer text-center whitespace-nowrap ${
                 roleFilter === type
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -153,8 +153,8 @@ export default function Repositories() {
         </div>
 
         {/* Search Input & Sort Selector */}
-        <div className="flex w-full sm:flex-1 sm:min-w-[220px] sm:max-w-md relative items-center gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row w-full md:flex-1 md:max-w-md items-stretch sm:items-center gap-2 sm:gap-3 min-w-0">
+          <div className="relative flex-1 min-w-0">
             <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
             <input
               type="text"
@@ -165,12 +165,12 @@ export default function Repositories() {
             />
           </div>
 
-          <div className="flex items-center space-x-1.5 shrink-0">
+          <div className="flex items-center space-x-1.5 shrink-0 justify-between sm:justify-start">
             <label className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort PRs:</label>
             <select
               value={sortByPrs}
               onChange={handleSortByPrsChange}
-              className="text-xs border border-gray-300 bg-white px-2.5 py-1.5 text-gray-800 focus:outline-none focus:border-gray-500 cursor-pointer"
+              className="text-xs border border-gray-300 bg-white px-2.5 py-1.5 text-gray-800 focus:outline-none focus:border-gray-500 cursor-pointer flex-1 sm:flex-initial"
             >
               <option value="none">Default</option>
               <option value="desc">Highest First</option>
@@ -181,9 +181,58 @@ export default function Repositories() {
       </div>
 
       {/* Table & Enclosed Stable Pagination Card */}
-      <div className="border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
-        {/* Scrollable table container */}
-        <div className="overflow-x-auto overflow-y-auto max-h-[460px] min-h-[380px]">
+      <div className="border border-gray-200 overflow-hidden shadow-xs bg-white flex flex-col">
+        {/* Mobile View: Clean card list (md:hidden) */}
+        <div className="block md:hidden divide-y divide-gray-100 overflow-y-auto max-h-[560px]">
+          {loading ? (
+            <div className="py-14 text-center text-xs text-gray-500">
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin mx-auto mb-2"></div>
+              Loading repositories...
+            </div>
+          ) : repositories.length > 0 ? (
+            repositories.map((repo) => (
+              <div key={repo.id} className="p-3.5 hover:bg-gray-50/70 transition-colors flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    to={`/pull-requests?repo=${encodeURIComponent(repo.name)}`}
+                    className="font-semibold text-gray-900 hover:text-blue-600 transition-colors flex items-center space-x-1.5 text-xs truncate min-w-0"
+                  >
+                    <i className="fa-regular fa-folder text-gray-400 text-xs shrink-0"></i>
+                    <span className="truncate">{repo.name}</span>
+                  </Link>
+                  <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full shrink-0 border ${
+                    repo.role === 'Private' ? 'bg-gray-100 text-gray-800 border-gray-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
+                    {repo.role}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs text-gray-500">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-semibold text-gray-900">{repo.openPrs}</span>
+                    <span>Open PR{repo.openPrs !== 1 ? 's' : ''}</span>
+                    <span>&bull;</span>
+                    <span title={repo.fullUpdatedAt}>{repo.formattedUpdatedAt}</span>
+                  </div>
+                  <Link
+                    to={`/pull-requests?repo=${encodeURIComponent(repo.name)}`}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors shrink-0"
+                  >
+                    View PRs &rarr;
+                  </Link>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-14 px-4 text-center text-xs text-gray-500">
+              <i className="fa-regular fa-folder-open text-2xl text-gray-300 mb-2 block"></i>
+              No repositories found matching your search or filter.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop View: Full Table (hidden md:block) */}
+        <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[580px] xl:max-h-[700px] min-h-[360px]">
           <table className="w-full text-left border-collapse bg-white text-sm">
             <thead className="sticky top-0 z-10 bg-gray-100 border-b border-gray-200 text-gray-600 font-semibold select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-xs">
               <tr>
@@ -257,9 +306,9 @@ export default function Repositories() {
           </table>
         </div>
 
-        {/* Stable Pagination Footer enclosed in the card so it never jerks */}
-        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 select-none">
-          <div className="flex items-center space-x-1.5">
+        {/* Stable Pagination Footer */}
+        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-gray-600 select-none">
+          <div className="flex items-center space-x-1.5 text-center sm:text-left">
             <span>
               Showing <span className="font-semibold text-gray-900">{totalRecords === 0 ? 0 : startIndex + 1}</span> to{' '}
               <span className="font-semibold text-gray-900">{Math.min(endIndex, totalRecords)}</span> of{' '}

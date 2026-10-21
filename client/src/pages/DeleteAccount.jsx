@@ -179,7 +179,7 @@ export default function DeleteAccount() {
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-2 flex items-center space-x-3">
+          <div className="pt-2 flex flex-wrap items-center gap-2.5 sm:gap-3">
             <button
               type="button"
               onClick={handleOpenModal}

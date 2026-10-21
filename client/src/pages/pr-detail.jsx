@@ -250,35 +250,35 @@ export default function PrDetail() {
       </div>
 
       {/* Unified PR Header & Info Section */}
-      <div className="px-6 py-4 border-b border-gray-200 bg-white shrink-0">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center space-x-3">
-            <h1 className="text-xl font-bold text-gray-900">{stats.title}</h1>
-            <span className="text-gray-500 text-xl font-light">#{stats.prNumber}</span>
+      <div className="px-3.5 sm:px-6 py-3 sm:py-4 border-b border-gray-200 bg-white shrink-0">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <h1 className="text-lg sm:text-xl font-bold text-gray-900 break-words">{stats.title}</h1>
+            <span className="text-gray-500 text-lg sm:text-xl font-light">#{stats.prNumber}</span>
             <StatusBadge state={stats.state} mergedAt={stats.mergedAt} isDraft={stats.isDraft} />
-            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full">
+            <span className="bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full truncate max-w-[200px] sm:max-w-none">
               {stats.repositoryFullName}
             </span>
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex flex-col gap-1.5 pl-1">
-            <div className="flex items-center text-sm text-gray-600">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
+          <div className="flex flex-col gap-1.5 pl-0 sm:pl-1">
+            <div className="flex flex-wrap items-center text-xs sm:text-sm text-gray-600 gap-1">
               <span className="text-gray-500 mr-1"><span className="font-medium text-gray-900">{stats.author}</span> wants to merge</span>
-              <span className="text-blue-700 px-1 py-0.5 text-sm font-bold font-mono">{stats.headBranch}</span>
+              <span className="text-blue-700 px-1 py-0.5 text-xs sm:text-sm font-bold font-mono bg-blue-50 sm:bg-transparent rounded sm:rounded-none">{stats.headBranch}</span>
               <span className="text-gray-500 text-xs mx-1">into</span>
-              <span className="text-blue-700 px-1 py-0.5 text-sm font-bold font-mono">{stats.baseBranch}</span>
+              <span className="text-blue-700 px-1 py-0.5 text-xs sm:text-sm font-bold font-mono bg-blue-50 sm:bg-transparent rounded sm:rounded-none">{stats.baseBranch}</span>
             </div>
 
-            <div className="flex items-center flex-wrap gap-y-1 text-xs text-gray-600">
+            <div className="flex items-center flex-wrap gap-y-1.5 text-xs text-gray-600">
               {stats.createdAt && (
                 <>
                   <div className="flex items-center">
                     <span className="text-gray-500">Opened:</span>
                     <span className="text-gray-700 ml-1">{new Date(stats.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                   </div>
-                  <span className="text-gray-400 font-medium mx-3">&bull;</span>
+                  <span className="text-gray-400 font-medium mx-2 sm:mx-3">&bull;</span>
                 </>
               )}
 
@@ -294,7 +294,7 @@ export default function PrDetail() {
 
               {stats?.analysisStatus && (
                 <>
-                  <span className="text-gray-400 font-medium mx-3">&bull;</span>
+                  <span className="text-gray-400 font-medium mx-2 sm:mx-3">&bull;</span>
                   <div className="flex items-center">
                     {renderAnalysisStatusBadge(stats.analysisStatus)}
                   </div>
@@ -303,7 +303,7 @@ export default function PrDetail() {
             </div>
           </div>
 
-          <div className="flex items-center space-x-4">
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 mt-2 lg:mt-0">
             <a
               href={`https://github.com/${repoParam}/pull/${prNumberParam}`}
               target="_blank"
@@ -314,17 +314,17 @@ export default function PrDetail() {
             </a>
             <button
               onClick={() => navigate(`/pr-ai-insights?repo=${repoParam}&pr=${prNumberParam}`, { state: { repoParam, prNumberParam } })}
-              className="bg-gray-900 text-white text-xs px-4 py-2 rounded font-medium hover:bg-gray-800 transition-colors cursor-pointer flex items-center space-x-2 shadow-sm"
+              className="bg-gray-900 text-white text-xs px-3.5 py-2 rounded font-medium hover:bg-gray-800 transition-colors cursor-pointer flex items-center space-x-1.5 shadow-sm"
             >
               <span>Go to Review Page</span>
-              <i className="fa-solid fa-arrow-right"></i>
+              <i className="fa-solid fa-arrow-right text-[11px]"></i>
             </button>
           </div>
         </div>
       </div>
 
       {statusMessage && (
-        <div className="bg-blue-50 border-b border-blue-200 px-6 py-2 text-xs text-blue-800 flex items-center justify-between">
+        <div className="bg-blue-50 border-b border-blue-200 px-3.5 sm:px-6 py-2 text-xs text-blue-800 flex items-center justify-between">
           <span>✓ {statusMessage}</span>
           <button onClick={() => setStatusMessage('')} className="text-blue-500 font-bold hover:text-blue-800">
             ✕
@@ -337,45 +337,45 @@ export default function PrDetail() {
         <main className="flex-1 min-w-0 bg-gray-900 text-gray-100 flex flex-col font-sans">
 
           {/* Top Toolbar (Fixed) */}
-          <div className="flex-none flex items-center justify-between bg-gray-950 px-4 py-3 border-b border-gray-800 shadow-sm z-10">
-            <div className="flex items-center space-x-2 w-1/2 max-w-md">
+          <div className="flex-none flex items-center justify-between bg-gray-950 px-3.5 sm:px-4 py-2.5 sm:py-3 border-b border-gray-800 shadow-sm z-10">
+            <div className="flex items-center space-x-2 text-xs text-gray-400">
+              <span>Diff overview</span>
             </div>
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setFiles(files.map(f => ({ ...f, isExpanded: false })))}
-                className="text-xs bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-gray-600 text-gray-300 hover:text-white px-3 py-1.5 rounded transition-all cursor-pointer font-medium shadow-sm"
+                className="text-xs bg-gray-800 border border-gray-700 hover:bg-gray-700 hover:border-gray-600 text-gray-300 hover:text-white px-2.5 sm:px-3 py-1.5 rounded transition-all cursor-pointer font-medium shadow-sm"
               >
                 Collapse all
               </button>
-
             </div>
           </div>
 
           {/* Code Files Scrollable Area */}
-          <div className="flex-1 p-4 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-900 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
+          <div className="flex-1 p-2.5 sm:p-4 overflow-y-auto scroll-smooth [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-gray-900 [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-600">
             {files.map(file => (
               <div key={file.id} id={`diff-file-${file.id}`} className="border border-gray-700 mb-2 rounded bg-gray-900 shadow-sm">
                 <div
-                  className={`flex items-center justify-between px-3 py-2 bg-gray-800 hover:bg-gray-700 transition-colors cursor-pointer ${file.isExpanded ? 'rounded-t-md border-b border-gray-700' : 'rounded-md'}`}
+                  className={`flex items-center justify-between px-3 py-2 bg-gray-800 hover:bg-gray-700 transition-colors cursor-pointer gap-2 ${file.isExpanded ? 'rounded-t-md border-b border-gray-700' : 'rounded-md'}`}
                   onClick={() => toggleFile(file.id)}
                 >
-                  <div className="flex items-center space-x-3">
-                    <i className={`fa-solid ${file.isExpanded ? 'fa-chevron-down text-gray-300' : 'fa-chevron-right text-gray-500'} text-[10px]`}></i>
-                    <span className={`${file.isExpanded ? 'text-gray-100' : 'text-gray-300'} font-mono text-xs hover:text-blue-400 hover:underline`}>{file.name}</span>
-                    <button onClick={(e) => e.stopPropagation()} className="text-gray-500 hover:text-gray-300" title="Copy path"><i className="fa-regular fa-copy text-xs"></i></button>
+                  <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
+                    <i className={`fa-solid ${file.isExpanded ? 'fa-chevron-down text-gray-300' : 'fa-chevron-right text-gray-500'} text-[10px] shrink-0`}></i>
+                    <span className={`${file.isExpanded ? 'text-gray-100' : 'text-gray-300'} font-mono text-xs hover:text-blue-400 hover:underline truncate`}>{file.name}</span>
+                    <button onClick={(e) => e.stopPropagation()} className="text-gray-500 hover:text-gray-300 shrink-0" title="Copy path"><i className="fa-regular fa-copy text-xs"></i></button>
                   </div>
-                  <div className="flex items-center space-x-3 text-xs" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center space-x-2 mr-2">
+                  <div className="flex items-center space-x-2 sm:space-x-3 text-xs shrink-0" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center space-x-1.5 sm:space-x-2 mr-1 sm:mr-2">
                       {file.status && (
-                        <span className={`flex items-center justify-center w-4 h-4 text-[10px] ${file.status === 'added' ? 'text-green-500' :
+                        <span className={`flex items-center justify-center w-4 h-4 text-[10px] font-bold ${file.status === 'added' ? 'text-green-500' :
                             file.status === 'removed' ? 'text-red-500' :
                               'text-amber-500'
                           }`}>
                           {file.status === 'added' ? 'A' : file.status === 'removed' ? 'D' : 'M'}
                         </span>
                       )}
-                      <span className="w-24 text-right text-blue-400 font-mono">+{file.additions || 0} Additions</span>
-                      <span className="w-24 text-right text-red-400 font-mono">-{file.deletions || 0} Deletions</span>
+                      <span className="text-right text-blue-400 font-mono"><span className="hidden sm:inline">+{file.additions || 0} Additions</span><span className="sm:hidden">+{file.additions || 0}</span></span>
+                      <span className="text-right text-red-400 font-mono"><span className="hidden sm:inline">-{file.deletions || 0} Deletions</span><span className="sm:hidden">-{file.deletions || 0}</span></span>
                       <div className="flex space-x-0.5" title={`${file.additions || 0} additions, ${file.deletions || 0} deletions`}>
 
                       </div>

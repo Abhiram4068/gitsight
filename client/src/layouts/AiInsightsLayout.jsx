@@ -54,7 +54,12 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
             onClick={() => navigate(-1)}
             className="inline-flex items-center text-xs font-medium text-gray-600 hover:text-gray-900 cursor-pointer"
           >
-            {searchParams.get('from') === 'tracked' ? 'Back to Tracked Issues' : 'Back to Pull Request Details'}
+            <span className="hidden sm:inline">
+              {searchParams.get('from') === 'tracked' ? 'Back to Tracked Issues' : 'Back to Pull Request Details'}
+            </span>
+            <span className="sm:hidden">
+              Back
+            </span>
           </button>
           <div className="h-full w-[1px] bg-gray-300"></div>
         </div>
@@ -168,8 +173,8 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
 
       {/* Confirm Tracking Modal */}
       {showConfirmModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white p-6 shadow-2xl w-[400px] border border-gray-400 rounded-none">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-40 p-3">
+          <div className="bg-white p-5 sm:p-6 shadow-2xl w-full max-w-sm sm:max-w-md border border-gray-400 rounded-none">
             <h2 className="text-base font-bold text-gray-900 mb-3">Track Issues</h2>
             <p className="text-sm text-gray-800 mb-6 leading-relaxed">
               {(() => {
@@ -188,10 +193,10 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
                 );
               })()}
             </p>
-            <div className="flex justify-end space-x-4">
+            <div className="flex justify-end space-x-3 sm:space-x-4">
               <button 
                 onClick={() => setShowConfirmModal(false)}
-                className="px-5 py-2 border-2 border-gray-300 text-gray-700 text-sm font-bold hover:bg-gray-100 rounded-none cursor-pointer"
+                className="px-4 sm:px-5 py-2 border-2 border-gray-300 text-gray-700 text-sm font-bold hover:bg-gray-100 rounded-none cursor-pointer"
               >
                 Cancel
               </button>
@@ -215,7 +220,7 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
                   }
                 }}
                 disabled={isTracking || (insights?.issues?.filter((i) => !i.isIgnored && !i.IsIgnored)?.length || 0) === 0}
-                className={`px-5 py-2 text-white text-sm font-bold rounded-none ${
+                className={`px-4 sm:px-5 py-2 text-white text-sm font-bold rounded-none ${
                   isTracking
                     ? 'bg-blue-400 cursor-wait'
                     : (insights?.issues?.filter((i) => !i.isIgnored && !i.IsIgnored)?.length || 0) === 0
@@ -238,16 +243,16 @@ const AiNavbar = ({ navigate, location, stats, insights, setInsights, onToggleSi
 
       {/* Untrack Confirm Modal */}
       {showUntrackModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white p-6 shadow-2xl w-[400px] border border-gray-400 rounded-none">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-40 p-3">
+          <div className="bg-white p-5 sm:p-6 shadow-2xl w-full max-w-sm sm:max-w-md border border-gray-400 rounded-none">
             <h2 className="text-base font-bold text-gray-900 mb-3">Untrack Issues</h2>
             <p className="text-sm text-gray-800 mb-6 leading-relaxed">
               You are about to stop tracking issues for this pull request. They will be removed from tracked issues. Do you wish to continue?
             </p>
-            <div className="flex justify-end space-x-4">
+            <div className="flex justify-end space-x-3 sm:space-x-4">
               <button 
                 onClick={() => setShowUntrackModal(false)}
-                className="px-5 py-2 border-2 border-gray-300 text-gray-700 text-sm font-bold hover:bg-gray-100 rounded-none cursor-pointer"
+                className="px-4 sm:px-5 py-2 border-2 border-gray-300 text-gray-700 text-sm font-bold hover:bg-gray-100 rounded-none cursor-pointer"
               >
                 Cancel
               </button>

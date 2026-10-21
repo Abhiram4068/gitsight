@@ -217,16 +217,16 @@ The system cant find any rules at the moment.
               </p>
             </div>
           ) : (
-            <div className="p-6 space-y-6">
+            <div className="p-3.5 sm:p-6 space-y-6">
               {/* Two Column Radio-Style Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {rules.map((rule) => (
                   <div
                     key={rule.id}
                     onClick={() => handleToggleRule(rule.id)}
-                    className={`p-3.5 text-left flex items-start gap-3  transition-all cursor-pointer select-none ${
+                    className={`p-3.5 text-left flex items-start gap-3 transition-all cursor-pointer select-none rounded hover:bg-gray-50/80 ${
                       rule.isEnabled
-                        ? ""
+                        ? "bg-blue-50/40"
                         : ""
                     }`}
                   >
@@ -259,7 +259,7 @@ The system cant find any rules at the moment.
               </div>
 
               {/* Action Bar */}
-              <div className="pt-4 border-t border-gray-200 flex items-center justify-between mt-6">
+              <div className="pt-4 border-t border-gray-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-4 mt-6">
                 <p className="text-[11px] text-gray-500 text-left">
                   Changes will apply to subsequent pull request scans on{" "}
                   <span className="font-semibold text-gray-700">
@@ -270,7 +270,7 @@ The system cant find any rules at the moment.
                 <button
                   onClick={handleSaveRules}
                   disabled={isSaving || !selectedRepo || (!rules.some((r) => r.isEnabled) && savedRuleIds.length === 0)}
-                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-sm transition-all flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-600 cursor-pointer shadow-sm"
+                  className="px-4 py-2 sm:py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-sm transition-all flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-600 cursor-pointer shadow-sm shrink-0"
                 >
                   {isSaving ? (
                     <>

@@ -96,7 +96,7 @@ export default function Pipelines() {
         </div>
 
         {/* Right side controls matching reference dashboard UI */}
-        <div className="flex items-center space-x-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => alert('Opening Edit Config editor...')}
             className="text-xs border bg-white border-gray-300 px-3 py-1.5 text-gray-700 hover:bg-gray-50 flex items-center space-x-1.5 rounded transition-colors cursor-pointer"
@@ -124,7 +124,7 @@ export default function Pipelines() {
       </div>
 
       {/* Filters Bar matching reference CircleCI layout */}
-      <div className="flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 mt-3 rounded-t-sm shadow-sm">
+      <div className="flex flex-col lg:flex-row flex-wrap gap-2.5 sm:gap-3 items-stretch lg:items-center justify-between bg-gray-50 p-2.5 sm:p-3 border border-gray-200 text-xs text-gray-700 border-t-0 mt-3 rounded-t-sm shadow-sm">
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-gray-500 font-medium mr-1">Filters</span>
 
@@ -184,7 +184,7 @@ export default function Pipelines() {
         </div>
 
         {/* Auto-expand toggle & Search */}
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center flex-wrap gap-2.5 sm:gap-3">
           <div className="flex items-center space-x-1.5">
             <span className="text-gray-600 font-medium">Auto-expand</span>
             <button
@@ -197,7 +197,7 @@ export default function Pipelines() {
             </button>
           </div>
 
-          <div className="relative min-w-[200px]">
+          <div className="relative flex-1 sm:w-auto min-w-[180px]">
             <i className="fa-solid fa-magnifying-glass absolute left-3 top-2 text-gray-400 text-xs"></i>
             <input
               type="text"
@@ -212,7 +212,82 @@ export default function Pipelines() {
 
       {/* Table & Enclosed Stable Pagination Card matching Project UI */}
       <div className="border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
-        <div className="overflow-x-auto overflow-y-auto max-h-[460px] min-h-[380px]">
+        {/* Mobile Cards List (< 768px) */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {currentPipelines.length > 0 ? (
+            currentPipelines.map((pipe) => (
+              <div key={pipe.id} className="p-3.5 hover:bg-gray-50/70 transition-colors flex flex-col gap-2.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <span className="font-mono font-medium text-xs text-gray-900">{pipe.projectName}</span>
+                    <span className="text-[10px] text-gray-400 ml-1.5 font-mono">{pipe.buildNumber}</span>
+                  </div>
+                  <span className="inline-flex items-center text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-200">
+                    <i className="fa-solid fa-check mr-1 text-[10px]"></i> Success
+                  </span>
+                </div>
+
+                <div>
+                  <Link to={`/pipelines/${pipe.id}`} className="font-mono text-sm text-blue-600 font-semibold hover:underline">
+                    {pipe.workflow}
+                  </Link>
+                </div>
+
+                <div className="bg-gray-50 p-2 rounded text-xs">
+                  <div className="font-mono font-semibold text-blue-700">{pipe.branch}</div>
+                  <div className="text-gray-500 font-mono text-[11px] truncate mt-0.5">
+                    <span className="text-gray-700 font-medium mr-1">{pipe.commitHash}</span>
+                    {pipe.commitMessage}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-xs text-gray-500 pt-1 border-t border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <span title={formatDateTime(pipe.startedAt)} className="flex items-center gap-1 text-gray-600">
+                      <i className="fa-regular fa-clock text-[11px] text-gray-400"></i>
+                      {formatRelativeTime(pipe.startedAt)}
+                    </span>
+                    <span className="font-mono font-semibold text-gray-800">
+                      {pipe.duration}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => alert(`Rerunning workflow ${pipe.workflow}`)}
+                      className="text-gray-500 hover:text-gray-900 p-1 cursor-pointer"
+                      title="Rerun workflow"
+                    >
+                      <i className="fa-solid fa-rotate-right"></i>
+                    </button>
+                    <button
+                      onClick={() => alert(`Cancelling workflow ${pipe.workflow}`)}
+                      className="text-gray-500 hover:text-red-600 p-1 cursor-pointer"
+                      title="Cancel workflow"
+                    >
+                      <i className="fa-solid fa-ban"></i>
+                    </button>
+                    <button
+                      onClick={() => alert(`Opening options for ${pipe.workflow}`)}
+                      className="text-gray-500 hover:text-gray-900 p-1 cursor-pointer"
+                      title="More options"
+                    >
+                      <i className="fa-solid fa-ellipsis"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-12 text-center text-xs text-gray-500 px-4">
+              <i className="fa-solid fa-network-wired text-2xl text-gray-300 mb-2 block"></i>
+              No pipeline executions found for {selectedProject}.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[460px] min-h-[380px]">
           <table className="w-full text-left border-collapse bg-white text-sm">
             <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold select-none text-xs">
               <tr>
@@ -307,8 +382,8 @@ export default function Pipelines() {
         </div>
 
         {/* Stable Pagination Footer */}
-        <div className="border-t border-gray-200 bg-gray-50 px-4 py-2.5 flex items-center justify-between text-xs text-gray-600 select-none">
-          <div className="flex items-center space-x-1.5">
+        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-gray-600 select-none">
+          <div className="flex items-center space-x-1.5 text-center sm:text-left">
             <span>
               Showing <span className="font-semibold text-gray-900">{totalRecords === 0 ? 0 : startIndex + 1}</span> to{' '}
               <span className="font-semibold text-gray-900">{Math.min(endIndex, totalRecords)}</span> of{' '}

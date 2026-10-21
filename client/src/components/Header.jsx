@@ -111,7 +111,7 @@ export default function Header({ user, loading, onLogout, onMenuToggle, sidebarO
           </button>
 
           {showNotificationMenu && (
-            <div className="absolute right-0 mt-2 w-72 bg-white shadow-xl border border-gray-200 py-3.5 px-4 z-50 animate-in fade-in zoom-in-95 duration-100 rounded-md text-gray-800">
+            <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white shadow-xl border border-gray-200 py-3.5 px-4 z-50 animate-in fade-in zoom-in-95 duration-100 rounded-md text-gray-800">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-semibold text-gray-900 flex items-center gap-1.5">
                   <i className="fa-solid fa-bell text-gray-700 text-xs"></i> Email Preferences
