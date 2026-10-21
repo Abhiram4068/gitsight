@@ -263,43 +263,44 @@ export default function PrDetail() {
         </div>
 
         <div className="flex items-center justify-between gap-4">
-          <div className="text-sm text-gray-600 flex items-center pl-1 flex-wrap gap-y-2">
-            <div className="flex items-center ">
-              <span className="text-gray-500 text-sm mr-1"><span className="font-medium text-gray-900">{stats.author}</span> wants to merge</span>
+          <div className="flex flex-col gap-1.5 pl-1">
+            <div className="flex items-center text-sm text-gray-600">
+              <span className="text-gray-500 mr-1"><span className="font-medium text-gray-900">{stats.author}</span> wants to merge</span>
               <span className="text-blue-700 px-1 py-0.5 text-sm font-bold font-mono">{stats.headBranch}</span>
               <span className="text-gray-500 text-xs mx-1">into</span>
               <span className="text-blue-700 px-1 py-0.5 text-sm font-bold font-mono">{stats.baseBranch}</span>
             </div>
 
-            {stats.createdAt && (
-              <>
-                <span className="text-gray-400 font-medium mx-4">&bull;</span>
-                <div className="flex items-center text-xs">
-                  <span className="text-gray-500">Opened:</span>
-                  <span className="text-gray-700 ml-1">{new Date(stats.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
-                </div>
-              </>
-            )}
+            <div className="flex items-center flex-wrap gap-y-1 text-xs text-gray-600">
+              {stats.createdAt && (
+                <>
+                  <div className="flex items-center">
+                    <span className="text-gray-500">Opened:</span>
+                    <span className="text-gray-700 ml-1">{new Date(stats.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
+                  </div>
+                  <span className="text-gray-400 font-medium mx-3">&bull;</span>
+                </>
+              )}
 
-            <span className="text-gray-400 font-medium mx-4">&bull;</span>
-            <div className="flex items-center space-x-3 text-sm">
-              <span className="text-gray-900 font-medium">{files.length} Files changed</span>
-              {stats && (
-                <div className="flex items-center space-x-2 text-xs font-mono">
-                  <span className="text-green-600">+{stats.additions || 0}</span>
-                  <span className="text-red-600">-{stats.deletions || 0}</span>
-                </div>
+              <div className="flex items-center space-x-2">
+                <span className="text-gray-900 font-medium">{files.length} Files changed</span>
+                {stats && (
+                  <div className="flex items-center space-x-1.5 font-mono">
+                    <span className="text-green-600">+{stats.additions || 0}</span>
+                    <span className="text-red-600">-{stats.deletions || 0}</span>
+                  </div>
+                )}
+              </div>
+
+              {stats?.analysisStatus && (
+                <>
+                  <span className="text-gray-400 font-medium mx-3">&bull;</span>
+                  <div className="flex items-center">
+                    {renderAnalysisStatusBadge(stats.analysisStatus)}
+                  </div>
+                </>
               )}
             </div>
-
-            {stats?.analysisStatus && (
-              <>
-                <span className="text-gray-400 font-medium mx-4">&bull;</span>
-                <div className="flex items-center">
-                  {renderAnalysisStatusBadge(stats.analysisStatus)}
-                </div>
-              </>
-            )}
           </div>
 
           <div className="flex items-center space-x-4">
@@ -338,14 +339,6 @@ export default function PrDetail() {
           {/* Top Toolbar (Fixed) */}
           <div className="flex-none flex items-center justify-between bg-gray-950 px-4 py-3 border-b border-gray-800 shadow-sm z-10">
             <div className="flex items-center space-x-2 w-1/2 max-w-md">
-              <div className="relative w-full">
-                <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-500 text-xs"></i>
-                <input
-                  type="text"
-                  placeholder="Search files..."
-                  className="w-full bg-gray-900 border border-gray-700 rounded text-xs text-gray-200 pl-8 pr-3 py-1.5 focus:outline-none focus:border-gray-500 focus:bg-gray-800 transition-colors shadow-inner"
-                />
-              </div>
             </div>
             <div className="flex items-center space-x-2">
               <button

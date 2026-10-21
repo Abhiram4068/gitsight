@@ -19,12 +19,21 @@ export default function PullRequests() {
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'open' | 'merged' | 'closed'
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 10;
+
+  // Debounce search input by 400ms before making the API call
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   // Fetch available repositories list
   useEffect(() => {
@@ -73,7 +82,7 @@ export default function PullRequests() {
       const data = await pullRequestsApi.getPullRequests({
         repoFullName: selectedRepo,
         state: statusFilter,
-        search: searchQuery,
+        search: debouncedSearch,
         pageNumber: currentPage,
         pageSize,
       });
@@ -96,7 +105,7 @@ export default function PullRequests() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedRepo, statusFilter, searchQuery, currentPage, pageSize]);
+  }, [selectedRepo, statusFilter, debouncedSearch, currentPage, pageSize]);
 
   useEffect(() => {
     fetchPullRequests();

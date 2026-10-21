@@ -13,10 +13,19 @@ export default function Repositories() {
   
   // Search, Filter, and Sort States
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [sortByPrs, setSortByPrs] = useState('none'); // 'none' | 'desc' | 'asc'
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
+
+  // Debounce search input by 400ms before making the API call
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   const fetchRepos = useCallback(async (isSync = false) => {
     try {
@@ -24,7 +33,7 @@ export default function Repositories() {
       setLoading(true);
 
       const data = await repositoriesApi.getRepositories({
-        search: searchQuery,
+        search: debouncedSearch,
         role: roleFilter,
         sortByPrs,
         pageNumber: currentPage,
@@ -61,7 +70,7 @@ export default function Repositories() {
       setLoading(false);
       setSyncing(false);
     }
-  }, [searchQuery, roleFilter, sortByPrs, currentPage, pageSize]);
+  }, [debouncedSearch, roleFilter, sortByPrs, currentPage, pageSize]);
 
   useEffect(() => {
     fetchRepos();
