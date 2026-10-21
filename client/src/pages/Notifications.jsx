@@ -123,10 +123,10 @@ export default function Notifications() {
 
       <div className="mt-4 bg-white border border-gray-200 rounded-sm shadow-sm overflow-hidden flex flex-col min-h-[500px]">
         {/* Controls / Tabs */}
-        <div className="flex items-center border-b border-gray-100 bg-gray-50/50">
+        <div className="flex items-center border-b border-gray-100 bg-gray-50/50 overflow-x-auto">
           <button
             onClick={() => setFilter('all')}
-            className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer ${
+            className={`px-4 sm:px-5 py-2.5 sm:py-3 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer whitespace-nowrap ${
               filter === 'all'
                 ? 'text-blue-700 border-b-2 border-blue-600 bg-white'
                 : 'text-gray-500 hover:text-gray-800'
@@ -136,7 +136,7 @@ export default function Notifications() {
           </button>
           <button
             onClick={() => setFilter('unread')}
-            className={`px-5 py-3 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 ${
+            className={`px-4 sm:px-5 py-2.5 sm:py-3 text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap ${
               filter === 'unread'
                 ? 'text-blue-700 border-b-2 border-blue-600 bg-white'
                 : 'text-gray-500 hover:text-gray-800'
@@ -164,7 +164,7 @@ export default function Notifications() {
               {filteredNotifications.map((notification) => (
                 <div 
                   key={notification.id} 
-                  className={`p-4 flex items-start gap-4 transition-colors hover:bg-gray-50/80 ${
+                  className={`p-3 sm:p-4 flex items-start gap-3 sm:gap-4 transition-colors hover:bg-gray-50/80 ${
                     !notification.isRead ? 'bg-blue-50/20 relative' : 'bg-white'
                   }`}
                   onClick={() => !notification.isRead && markAsRead(notification.id)}
@@ -177,11 +177,11 @@ export default function Notifications() {
                   {getIconForType(notification.type)}
 
                   <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-start mb-1">
+                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-1">
                       <h3 className={`text-sm ${!notification.isRead ? 'font-bold text-gray-900' : 'font-semibold text-gray-800'}`}>
                         {notification.title}
                       </h3>
-                      <span className="text-[11px] text-gray-500 whitespace-nowrap ml-4">
+                      <span className="text-[11px] text-gray-500 whitespace-nowrap">
                         {formatRelativeTime(notification.timestamp)}
                       </span>
                     </div>

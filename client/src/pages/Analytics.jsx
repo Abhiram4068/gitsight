@@ -25,13 +25,13 @@ export default function Analytics() {
           </p>
         </div>
 
-        <div className="flex items-center space-x-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 text-xs w-full sm:w-auto">
           <div className="flex items-center space-x-2">
             <label className="text-gray-600 font-medium">Repository:</label>
             <select 
               value={selectedRepo}
               onChange={(e) => setSelectedRepo(e.target.value)}
-              className="border border-gray-300 rounded-sm px-2 py-1 bg-white text-gray-700 focus:outline-none focus:border-blue-500 shadow-sm"
+              className="border border-gray-300 rounded-sm px-2 py-1 bg-white text-gray-700 focus:outline-none focus:border-blue-500 shadow-sm text-xs cursor-pointer"
             >
               <option value="all">All Repositories</option>
               <option value="payment-service">payment-service</option>
@@ -44,7 +44,7 @@ export default function Analytics() {
             <select 
               value={selectedPeriod}
               onChange={(e) => setSelectedPeriod(e.target.value)}
-              className="border border-gray-300 rounded-sm px-2 py-1 bg-white text-gray-700 focus:outline-none focus:border-blue-500 shadow-sm"
+              className="border border-gray-300 rounded-sm px-2 py-1 bg-white text-gray-700 focus:outline-none focus:border-blue-500 shadow-sm text-xs cursor-pointer"
             >
               <option value="7d">Last 7 Days</option>
               <option value="30d">Last 30 Days</option>
@@ -54,10 +54,10 @@ export default function Analytics() {
         </div>
       </div>
 
-      <div className="mt-4 space-y-6">
+      <div className="mt-4 space-y-4 sm:space-y-6">
 
         {/* AI Engineering Insight */}
-        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100  p-3 shadow-sm relative overflow-hidden">
+        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 p-3.5 sm:p-4 shadow-sm relative overflow-hidden rounded-sm">
           <div className="absolute top-0 right-0 p-4 opacity-10">
             <i className="fa-solid fa-chart-column text-2xl text-indigo-900"></i>
           </div>
@@ -69,41 +69,41 @@ export default function Analytics() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
-          <div className="bg-white p-4 flex flex-col justify-between">
-            <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">PRs Reviewed</span>
-            <div className="flex items-end justify-between mt-2">
-              <span className="text-2xl font-bold text-gray-900">248</span>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-4">
+          <div className="bg-white border border-gray-200 rounded-sm shadow-sm p-3 sm:p-4 flex flex-col justify-between">
+            <span className="text-gray-500 text-[11px] font-semibold uppercase tracking-wider mb-1 truncate">PRs Reviewed</span>
+            <div className="flex items-end justify-between mt-1 sm:mt-2">
+              <span className="text-xl sm:text-2xl font-bold text-gray-900">248</span>
             </div>
           </div>
-          <div className="bg-white p-4 flex flex-col justify-between">
-            <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Issues Found</span>
-            <div className="flex items-end justify-between mt-2">
-              <span className="text-2xl font-bold text-gray-900">631</span>
+          <div className="bg-white border border-gray-200 rounded-sm shadow-sm p-3 sm:p-4 flex flex-col justify-between">
+            <span className="text-gray-500 text-[11px] font-semibold uppercase tracking-wider mb-1 truncate">Issues Found</span>
+            <div className="flex items-end justify-between mt-1 sm:mt-2">
+              <span className="text-xl sm:text-2xl font-bold text-gray-900">631</span>
             </div>
           </div>
-          <div className="bg-white p-4 flex flex-col justify-between">
-            <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Issues Found</span>
-            <div className="flex items-end justify-between mt-2">
-              <span className="text-2xl font-bold text-gray-900">631</span>
+          <div className="bg-white border border-gray-200 rounded-sm shadow-sm p-3 sm:p-4 flex flex-col justify-between">
+            <span className="text-gray-500 text-[11px] font-semibold uppercase tracking-wider mb-1 truncate">Security Bugs</span>
+            <div className="flex items-end justify-between mt-1 sm:mt-2">
+              <span className="text-xl sm:text-2xl font-bold text-red-600">18</span>
             </div>
           </div>
-          <div className="bg-white p-4 flex flex-col justify-between">
-            <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Issues Found</span>
-            <div className="flex items-end justify-between mt-2">
-              <span className="text-2xl font-bold text-gray-900">631</span>
+          <div className="bg-white border border-gray-200 rounded-sm shadow-sm p-3 sm:p-4 flex flex-col justify-between">
+            <span className="text-gray-500 text-[11px] font-semibold uppercase tracking-wider mb-1 truncate">Risk Score</span>
+            <div className="flex items-end justify-between mt-1 sm:mt-2">
+              <span className="text-xl sm:text-2xl font-bold text-amber-600">Low</span>
             </div>
           </div>
-          <div className="bg-white p-4 flex flex-col justify-between">
-            <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Resolution Rate</span>
-            <div className="flex items-end justify-between mt-2">
-              <span className="text-2xl font-bold text-gray-900">81%</span>
+          <div className="bg-white border border-gray-200 rounded-sm shadow-sm p-3 sm:p-4 flex flex-col justify-between">
+            <span className="text-gray-500 text-[11px] font-semibold uppercase tracking-wider mb-1 truncate">Resolution</span>
+            <div className="flex items-end justify-between mt-1 sm:mt-2">
+              <span className="text-xl sm:text-2xl font-bold text-gray-900">81%</span>
             </div>
           </div>
-          <div className="bg-white p-4 flex flex-col justify-between">
-            <span className="text-gray-500 text-xs font-semibold uppercase tracking-wider mb-1">Avg Review Time</span>
-            <div className="flex items-end justify-between mt-2">
-              <span className="text-2xl font-bold text-gray-900">38s</span>
+          <div className="bg-white border border-gray-200 rounded-sm shadow-sm p-3 sm:p-4 flex flex-col justify-between">
+            <span className="text-gray-500 text-[11px] font-semibold uppercase tracking-wider mb-1 truncate">Avg Review</span>
+            <div className="flex items-end justify-between mt-1 sm:mt-2">
+              <span className="text-xl sm:text-2xl font-bold text-gray-900">38s</span>
             </div>
           </div>
         </div>

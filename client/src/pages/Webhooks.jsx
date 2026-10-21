@@ -132,12 +132,12 @@ export default function Webhooks() {
                   <div className="flex items-center flex-wrap gap-2 mt-1">
                     <span>Set the <span className="font-bold">Payload URL</span> to your GitSight endpoint:</span>
                     <div className="flex items-center space-x-1">
-                      <code className="bg-amber-200/40 border border-amber-300/50 px-1.5 py-0.5 rounded text-[11px] select-all text-amber-800">
+                      <code className="bg-amber-200/40 border border-amber-300/50 px-1.5 py-0.5 rounded text-[11px] select-all text-amber-800 break-all">
                         https://api.gitsight.app/webhooks/github
                       </code>
                       <button
                         onClick={handleCopyUrl}
-                        className="p-1 hover:bg-amber-200/60 rounded text-amber-700 transition-colors cursor-pointer"
+                        className="p-1 hover:bg-amber-200/60 rounded text-amber-700 transition-colors cursor-pointer shrink-0"
                         title="Copy to clipboard"
                       >
                         <i className={`fa-solid ${copied ? 'fa-check text-green-600' : 'fa-copy'}`}></i>
@@ -151,7 +151,7 @@ export default function Webhooks() {
                 <li>Click <strong>Add webhook</strong> to save your configuration.</li>
               </ol>
               <div className="mt-3 pt-3 border-t border-amber-200/60 flex items-center space-x-2 text-amber-700">
-                <i className="fa-solid fa-circle-info"></i>
+                <i className="fa-solid fa-circle-info shrink-0"></i>
                 <p className="italic">
                   Once configured, GitSight will automatically trigger AI reviews on newly opened or synchronized pull requests!
                 </p>
@@ -162,7 +162,7 @@ export default function Webhooks() {
       </div>
 
       {/* Controls Bar: Search Bar */}
-      <div className="flex items-center bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-b-0 mt-3 rounded-t-sm shadow-sm">
+      <div className="flex items-center bg-gray-50 p-2.5 sm:p-3 border border-gray-200 text-xs text-gray-700 border-b-0 mt-3 rounded-t-sm shadow-sm">
         <div className="flex-1 w-full sm:max-w-md relative">
           <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
           <input
@@ -178,10 +178,64 @@ export default function Webhooks() {
         </div>
       </div>
 
-      {/* Table & Pagination Card */}
+      {/* Table & Cards Container */}
       <div className="border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
-        {/* Scrollable table container */}
-        <div className="overflow-x-auto overflow-y-auto max-h-[500px] min-h-[380px]">
+        {/* Mobile Cards List (< 768px) */}
+        <div className="md:hidden divide-y divide-gray-100">
+          {currentWebhooks.length > 0 ? (
+            currentWebhooks.map((wh) => (
+              <div key={wh.id} className="p-3.5 hover:bg-gray-50/70 transition-colors flex flex-col gap-2.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono font-medium text-xs text-gray-900 bg-gray-100 px-1.5 py-0.5 rounded">
+                    {wh.id}
+                  </span>
+                  <div>
+                    {wh.status === 'Success' ? (
+                      <span className="inline-flex items-center text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-emerald-200">
+                        <i className="fa-solid fa-check mr-1 text-[10px]"></i> Success
+                      </span>
+                    ) : wh.status === 'Failed' ? (
+                      <span className="inline-flex items-center text-red-700 bg-red-50 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-red-200">
+                        <i className="fa-solid fa-xmark mr-1 text-[10px]"></i> Failed
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full text-[11px] font-semibold border border-amber-200">
+                        <i className="fa-solid fa-spinner fa-spin mr-1 text-[10px]"></i> Pending
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap text-xs">
+                  <span className="font-mono text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded text-[11px] border border-blue-100 font-medium">
+                    {wh.eventType}
+                  </span>
+                  <span className="font-medium text-gray-800 break-all">
+                    {wh.repo}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 text-xs text-gray-500 border-t border-gray-100">
+                  <span title={formatDateTime(wh.triggeredAt)} className="flex items-center gap-1.5 text-gray-600">
+                    <i className="fa-regular fa-clock text-[11px] text-gray-400"></i>
+                    {formatRelativeTime(wh.triggeredAt)}
+                  </span>
+                  <button className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline cursor-pointer">
+                    View Payload
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-12 text-center text-xs text-gray-500 px-4">
+              <i className="fa-solid fa-network-wired text-2xl text-gray-300 mb-2 block"></i>
+              No webhooks found.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View (>= 768px) */}
+        <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[500px] min-h-[380px]">
           <table className="w-full text-left border-collapse bg-white text-sm">
             <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-xs">
               <tr>
@@ -248,8 +302,8 @@ export default function Webhooks() {
         </div>
 
         {/* Stable Pagination Footer */}
-        <div className="border-t border-gray-200 bg-gray-50 px-4 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 select-none">
-          <div className="flex items-center space-x-1.5">
+        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-gray-600 select-none">
+          <div className="flex items-center space-x-1.5 text-center sm:text-left">
             <span>
               Showing <span className="font-semibold text-gray-900">{totalRecords === 0 ? 0 : startIndex + 1}</span> to{' '}
               <span className="font-semibold text-gray-900">{Math.min(endIndex, totalRecords)}</span> of{' '}

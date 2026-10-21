@@ -570,11 +570,11 @@ export default function PrAiInsights() {
         </div>
       ) : (
         /* Tree Line Wrapper */
-        <div className="relative pl-6">
+        <div className="relative pl-3.5 sm:pl-6">
           {/* Continuous Trunk Line connecting all issues */}
-          <div className="absolute left-[11px] top-3 bottom-6 w-0.5 bg-emerald-500"></div>
+          <div className="absolute left-[7px] sm:left-[11px] top-3 bottom-6 w-0.5 bg-emerald-500"></div>
 
-          <div className="space-y-10">
+          <div className="space-y-8 sm:space-y-10">
             {reviewThreads.map((thread) => (
               <div
                 key={thread.id}
@@ -582,19 +582,19 @@ export default function PrAiInsights() {
                 className="relative group"
               >
                 {/* Horizontal Branch Line pointing from the main trunk to the card */}
-                <div className="absolute -left-[12px] top-5 w-3 h-0.5 bg-emerald-500"></div>
+                <div className="absolute -left-[8px] sm:-left-[12px] top-5 w-2 sm:w-3 h-0.5 bg-emerald-500"></div>
 
                 {/* Review Card */}
                 <div
                   className={`bg-white border border-gray-200 rounded-md overflow-hidden shadow-sm transition-all duration-500 ${!isPrTracked && ignoredIssues.has(thread.id) ? "opacity-50 grayscale" : ""}`}
                 >
                   {/* Diff Context Header */}
-                  <div className="bg-gray-100/70 px-3 py-2 border-b border-gray-200 flex items-center justify-between font-mono text-xs text-gray-600">
-                    <span className="font-medium text-gray-900">
+                  <div className="bg-gray-100/70 px-3 py-2 border-b border-gray-200 flex flex-wrap items-center justify-between gap-2 font-mono text-xs text-gray-600">
+                    <span className="font-medium text-gray-900 break-all">
                       {thread.filePath}
                     </span>
-                    <div className="flex items-center space-x-3">
-                      <span className="text-gray-500">
+                    <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+                      <span className="text-gray-500 text-[11px]">
                         Lines +{thread.startLine} to +{thread.endLine}
                       </span>
 

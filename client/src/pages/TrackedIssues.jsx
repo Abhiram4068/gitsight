@@ -224,14 +224,14 @@ export default function TrackedIssues() {
       </div>
 
       {/* Controls Bar: Status Filter Tabs & Search Bar */}
-      <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
+      <div className="flex flex-col md:flex-row flex-wrap gap-2.5 sm:gap-3 items-stretch md:items-center justify-between bg-gray-50 p-2.5 sm:p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
         {/* Status Tabs */}
-        <div className="flex flex-wrap items-center gap-1 bg-white p-0.5 border border-gray-300 rounded">
+        <div className="flex items-center gap-1 bg-white p-0.5 border border-gray-300 rounded overflow-x-auto w-full md:w-auto">
           {['all', 'Opened', 'InProgress', 'Resolved', 'Closed'].map((status) => (
             <button
               key={status}
               onClick={() => handleStatusFilterChange(status)}
-              className={`px-2.5 py-1 font-medium rounded text-xs transition-colors cursor-pointer ${
+              className={`flex-1 md:flex-initial px-2.5 py-1 font-medium rounded text-xs transition-colors cursor-pointer text-center whitespace-nowrap ${
                 statusFilter.toLowerCase() === status.toLowerCase()
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -243,7 +243,7 @@ export default function TrackedIssues() {
         </div>
 
         {/* Search Filter */}
-        <div className="flex-1 min-w-[220px] max-w-md relative">
+        <div className="w-full md:flex-1 md:max-w-md relative min-w-0">
           <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
           <input
             type="text"
@@ -256,9 +256,102 @@ export default function TrackedIssues() {
       </div>
 
       {/* Table & Enclosed Stable Pagination Card */}
-      <div className="border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
-        {/* Scrollable table container */}
-        <div className="overflow-x-auto overflow-y-auto max-h-[500px] min-h-[380px]">
+      <div className="border border-gray-200 overflow-hidden shadow-xs bg-white flex flex-col">
+        {/* Mobile View: Clean, touch-friendly card list (md:hidden) */}
+        <div className="block md:hidden divide-y divide-gray-100 overflow-y-auto max-h-[560px]">
+          {loading ? (
+            <div className="py-14 text-center text-xs text-gray-500">
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin mx-auto mb-2"></div>
+              Loading tracked issues...
+            </div>
+          ) : !selectedPr ? (
+            <div className="py-14 px-4 text-center text-xs text-gray-500">
+              <i className="fa-solid fa-code-pull-request text-2xl text-gray-300 mb-2 block"></i>
+              Please select a Pull Request to view its tracked issues.
+            </div>
+          ) : paginatedIssues.length > 0 ? (
+            paginatedIssues.map((issue) => {
+              const severityColor =
+                issue.severity === 'Critical'
+                  ? 'text-red-800 bg-red-50 border-red-200'
+                  : issue.severity === 'High'
+                  ? 'text-orange-800 bg-orange-50 border-orange-200'
+                  : issue.severity === 'Medium'
+                  ? 'text-yellow-800 bg-yellow-50 border-yellow-200'
+                  : 'text-blue-800 bg-blue-50 border-blue-200';
+
+              return (
+                <div key={issue.id} className="p-3.5 hover:bg-gray-50/70 transition-colors flex flex-col gap-2 text-xs">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center space-x-1.5 min-w-0">
+                      <Link
+                        to={`/pr-detail?repo=${encodeURIComponent(`${selectedPr.owner}/${selectedPr.repo}`)}&pr=${issue.pullRequestNumber}`}
+                        className="font-mono font-bold text-blue-600 hover:underline shrink-0"
+                        title="View PR Details"
+                      >
+                        #{issue.pullRequestNumber}
+                      </Link>
+                      <span className="text-gray-300">&bull;</span>
+                      <span className="font-medium text-gray-800 truncate">{issue.issueType}</span>
+                      <span className={`px-1.5 py-0.2 text-[10px] font-semibold rounded border shrink-0 ${severityColor}`}>
+                        {issue.severity}
+                      </span>
+                    </div>
+
+                    {/* Status Dropdown */}
+                    <div className="relative inline-flex items-center shrink-0">
+                      <select
+                        value={issue.status}
+                        onChange={(e) => handleStatusUpdate(issue.id, e.target.value)}
+                        disabled={updatingIssueId === issue.id}
+                        className={`py-0.5 px-2 text-[10px] font-semibold text-white rounded-full shadow-xs capitalize cursor-pointer focus:outline-none ${
+                          issue.status === 'Opened' ? 'bg-emerald-600' :
+                          issue.status === 'InProgress' ? 'bg-blue-500' :
+                          issue.status === 'Resolved' ? 'bg-purple-600' :
+                          'bg-gray-500'
+                        }`}
+                      >
+                        <option value="Opened" className="text-gray-900 bg-white">Open</option>
+                        <option value="InProgress" className="text-gray-900 bg-white">In Progress</option>
+                        <option value="Resolved" className="text-gray-900 bg-white">Resolved</option>
+                        <option value="Closed" className="text-gray-900 bg-white">Closed</option>
+                      </select>
+                      {updatingIssueId === issue.id && (
+                        <i className="fa-solid fa-spinner fa-spin absolute -right-4 text-blue-600 text-[10px]"></i>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="font-mono text-[11px] text-gray-700 bg-gray-50 p-1.5 rounded border border-gray-200 break-all">
+                    <span>{issue.filePath}</span>
+                    <span className="text-gray-400 ml-2 font-sans text-[10px]">Lines {issue.startLine}&ndash;{issue.endLine}</span>
+                  </div>
+
+                  <p className="text-gray-700 leading-relaxed text-xs">
+                    {issue.comment}
+                  </p>
+
+                  <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-[11px] text-gray-400">
+                    <span>Opened: {formatRelativeTime(issue.openedAt)}</span>
+                    <Link
+                      to={`/pr-detail?repo=${encodeURIComponent(`${selectedPr.owner}/${selectedPr.repo}`)}&pr=${issue.pullRequestNumber}`}
+                      className="text-xs font-semibold text-blue-600 hover:underline"
+                    >
+                      View in PR &rarr;
+                    </Link>
+                  </div>
+                </div>
+              );
+            })
+          ) : (
+            <div className="py-14 px-4 text-center text-xs text-gray-500">
+              No tracked issues found matching your filters.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop View: Full Table (hidden md:block) */}
+        <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[580px] xl:max-h-[700px] min-h-[360px]">
           <table className="w-full text-left border-collapse bg-white text-sm">
             <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-xs">
               <tr>
@@ -403,8 +496,8 @@ export default function TrackedIssues() {
         </div>
 
         {/* Stable Pagination Footer */}
-        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-600 select-none">
-          <div className="flex items-center space-x-1.5">
+        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-gray-600 select-none">
+          <div className="flex items-center space-x-1.5 text-center sm:text-left">
             <span>
               Showing <span className="font-semibold text-gray-900">{totalRecords === 0 ? 0 : startIndex + 1}</span> to{' '}
               <span className="font-semibold text-gray-900">{Math.min(endIndex, totalRecords)}</span> of{' '}

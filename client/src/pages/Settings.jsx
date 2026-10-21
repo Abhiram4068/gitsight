@@ -140,14 +140,14 @@ export default function Settings() {
         <div className="bg-[#f8f9fa] border-b border-gray-200 px-3 flex flex-wrap items-center justify-between gap-2">
           
           {/* Clickable and selectable Section Tabs */}
-          <div className="flex items-center space-x-1 sm:space-x-1 text-xs overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex items-center space-x-1 sm:space-x-1 text-xs overflow-x-auto overflow-y-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden w-full sm:w-auto py-1">
             {TABS.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`relative flex items-center space-x-2 px-3.5 py-2.5 font-medium transition-colors cursor-pointer select-none shrink-0 ${
+                  className={`relative flex items-center space-x-2 px-3 sm:px-3.5 py-2 sm:py-2.5 font-medium transition-colors cursor-pointer select-none shrink-0 text-xs ${
                     isActive
                       ? "text-blue-700 font-semibold"
                       : "text-gray-600 hover:text-gray-900 hover:bg-gray-100/80"
@@ -165,7 +165,7 @@ export default function Settings() {
           </div>
 
           {/* Quick Actions (Save & Discard) on the right */}
-          <div className="flex items-center space-x-2 text-xs py-1.5">
+          <div className="flex items-center space-x-2 text-xs py-1.5 w-full sm:w-auto justify-end border-t sm:border-t-0 border-gray-100">
             {/* Current Status Badge (Unsaved vs Saved) */}
             <StatusBadge state={hasChanges ? 'unsaved' : 'saved'} />
 

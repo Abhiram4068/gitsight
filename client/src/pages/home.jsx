@@ -167,9 +167,9 @@ export default function Dashboard() {
                 <li>
                   <div className="flex items-center flex-wrap gap-2 mt-1">
                     <span>Set the <span className="font-semibold text-gray-900">Payload URL</span> to your GitSight endpoint:</span>
-                    <div className="flex items-center space-x-1">
-                      <code className="px-1.5 py-0.5  text-[11px] select-all text-blue-600 font-mono">
-                      https://gitsight-uwys.onrender.com/api/webhooks/github
+                    <div className="flex items-center space-x-1 max-w-full">
+                      <code className="px-1.5 py-0.5 text-[11px] select-all text-blue-600 font-mono break-all">
+                        https://gitsight-uwys.onrender.com/api/webhooks/github
                       </code>
                       <button
                         type="button"
@@ -257,8 +257,112 @@ export default function Dashboard() {
         </div>
 
         {/* Bordered Content Container (from table heading onwards) */}
-        <div className="border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
-          <div className="overflow-x-auto">
+        <div className="border border-gray-200 overflow-hidden shadow-xs bg-white flex flex-col">
+          {/* Mobile Card View (md:hidden) */}
+          <div className="block md:hidden divide-y divide-gray-100">
+            {isLoading ? (
+              <div className="py-14 text-center text-xs text-gray-500">
+                <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin mx-auto mb-2"></div>
+                Fetching recent pull requests...
+              </div>
+            ) : data?.recentPrs && data.recentPrs.length > 0 ? (
+              data.recentPrs.map((pr) => {
+                const repoFullName =
+                  pr.repositoryFullName ||
+                  (pr.htmlUrl &&
+                    pr.htmlUrl
+                      .split("github.com/")[1]
+                      ?.split("/pull")[0]) ||
+                  "repo";
+
+                return (
+                  <div key={`${repoFullName}-${pr.prNumber}`} className="p-3.5 hover:bg-gray-50/70 transition-colors flex flex-col gap-2 text-xs">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center space-x-2 min-w-0">
+                        <Link
+                          to={`/pr-detail?repo=${encodeURIComponent(repoFullName)}&pr=${pr.prNumber}`}
+                          className="font-mono font-bold text-blue-600 hover:underline shrink-0"
+                        >
+                          #{pr.prNumber}
+                        </Link>
+                        <StatusBadge
+                          state={pr.state}
+                          mergedAt={pr.mergedAt}
+                          isDraft={pr.isDraft}
+                        />
+                      </div>
+
+                      <div className="shrink-0">
+                        {pr.analysisStatus === "completed" || pr.analysisStatus === "analyzed" ? (
+                          <span className="px-2 py-0.5 text-[10px] font-semibold text-emerald-800 bg-emerald-100 rounded-full inline-flex items-center border border-emerald-200 shadow-xs">
+                            Analyzed
+                          </span>
+                        ) : pr.analysisStatus === "analyzing" ? (
+                          <span className="px-2 py-0.5 text-[10px] font-semibold text-blue-800 bg-blue-100 border border-blue-200 rounded-full inline-flex items-center shadow-xs">
+                            <div className="w-1.5 h-1.5 border-[1.5px] border-blue-400 border-t-blue-800 rounded-full animate-spin mr-1"></div>
+                            Analyzing
+                          </span>
+                        ) : pr.analysisStatus === "failed" ? (
+                          <span className="px-2 py-0.5 text-[10px] font-semibold text-red-800 bg-red-100 border border-red-200 rounded-full inline-flex items-center shadow-xs">
+                            Failed
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 text-[10px] font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full inline-flex items-center shadow-xs">
+                            Pending
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <Link
+                      to={`/pr-detail?repo=${encodeURIComponent(repoFullName)}&pr=${pr.prNumber}`}
+                      className="font-semibold text-gray-900 hover:text-blue-600 transition-colors line-clamp-2"
+                      title={pr.title}
+                    >
+                      {pr.title}
+                    </Link>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-gray-500">
+                      <div className="flex items-center space-x-1.5 min-w-0">
+                        <Link
+                          to={`/pull-requests?id=${encodeURIComponent(pr.repositoryId || pr.gitHubRepoId || repoFullName)}`}
+                          className="font-mono text-[11px] text-blue-600 hover:underline truncate max-w-[140px]"
+                          title={repoFullName}
+                        >
+                          {repoFullName}
+                        </Link>
+                        <span>&bull;</span>
+                        <span className="text-[11px] truncate">{pr.author}</span>
+                      </div>
+
+                      <Link
+                        to={`/pr-detail?repo=${encodeURIComponent(repoFullName)}&pr=${pr.prNumber}`}
+                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2.5 py-0.5 rounded transition-colors shrink-0"
+                      >
+                        View &rarr;
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="py-14 text-center text-xs text-gray-500 px-4">
+                <i className="fa-solid fa-code-pull-request text-2xl text-gray-300 mb-2 block"></i>
+                No pull requests found yet across your connected repositories.
+                <div className="mt-2">
+                  <Link
+                    to="/repositories"
+                    className="inline-block text-xs font-semibold text-blue-600 hover:underline"
+                  >
+                    Check connected repositories &rarr;
+                  </Link>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Desktop Table View (hidden md:block) */}
+          <div className="hidden md:block overflow-x-auto">
             <table className="w-full text-left border-collapse bg-white text-sm">
               <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-xs">
                 <tr>
