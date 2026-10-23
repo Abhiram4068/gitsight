@@ -23,6 +23,42 @@ public class UserRepository : IUserRepository
         return await _context.Users.FirstOrDefaultAsync(u => u.GitHubId == gitHubId, cancellationToken);
     }
 
+    public async Task<User?> GetActiveUserForWebhookAsync(string owner, CancellationToken cancellationToken = default)
+    {
+        if (!string.IsNullOrWhiteSpace(owner))
+        {
+            var normalizedOwner = owner.ToLower();
+            var matchedUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedOwner && !string.IsNullOrEmpty(u.AccessToken), cancellationToken);
+
+            if (matchedUser != null)
+            {
+                return matchedUser;
+            }
+        }
+
+        return await _context.Users
+            .FirstOrDefaultAsync(u => !string.IsNullOrEmpty(u.AccessToken), cancellationToken);
+    }
+
+    public async Task<User?> GetByUsernameWithAccessTokenAsync(string username, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return null;
+        }
+
+        var normalizedUsername = username.ToLower();
+        return await _context.Users
+            .FirstOrDefaultAsync(u => u.Username.ToLower() == normalizedUsername && !string.IsNullOrEmpty(u.AccessToken), cancellationToken);
+    }
+
+    public async Task<User?> GetFirstActiveUserWithAccessTokenAsync(CancellationToken cancellationToken = default)
+    {
+        return await _context.Users
+            .FirstOrDefaultAsync(u => !string.IsNullOrEmpty(u.AccessToken), cancellationToken);
+    }
+
     public async Task<bool> IsEmailAllowedAsync(string email, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(email))
