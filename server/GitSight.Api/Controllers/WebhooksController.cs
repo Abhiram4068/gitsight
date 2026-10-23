@@ -1,10 +1,6 @@
-using System.Text.Json;
 using GitSight.Application.Common.Interfaces;
 using GitSight.Application.Common.Models;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Logging;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace GitSight.Api.Controllers;
 
@@ -23,46 +19,45 @@ public class WebhooksController : ControllerBase
         _logger = logger;
     }
 
+    [HttpPost]
     [HttpPost("github")]
     public async Task<IActionResult> HandleGitHubWebhook()
     {
-        Request.Headers.TryGetValue("X-GitHub-Event", out var eventType);
+        // Extract headers
+        Request.Headers.TryGetValue("X-GitHub-Event", out var eventTypeHeader);
+        Request.Headers.TryGetValue("X-GitHub-Delivery", out var deliveryIdHeader);
+        Request.Headers.TryGetValue("User-Agent", out var userAgentHeader);
+        Request.Headers.TryGetValue("X-Hub-Signature-256", out var signatureHeader);
 
-        if (eventType != "pull_request")
-        {
-            return Ok(ApiResponse<string>.SuccessResponse("Ignored non-PR event.", "Event ignored.", 200));
-        }
-
+        // Read request payload
         using var reader = new StreamReader(Request.Body);
         var body = await reader.ReadToEndAsync();
-        using var doc = JsonDocument.Parse(body);
-        var root = doc.RootElement;
 
-        var action = root.GetProperty("action").GetString();
-        if (action != "opened" && action != "synchronize" && action != "reopened")
+        // Controller input validation for GitHub webhook properties & origin authenticity
+        var validationResult = _webhookService.ValidateWebhookRequest(
+            eventTypeHeader.ToString(),
+            deliveryIdHeader.ToString(),
+            userAgentHeader.ToString(),
+            signatureHeader.ToString(),
+            body);
+
+        if (!validationResult.IsValid)
         {
-            return Ok(ApiResponse<string>.SuccessResponse($"Ignored action '{action}'.", "Action ignored.", 200));
+            _logger.LogWarning("GitHub webhook validation rejected: {ErrorMessage}", validationResult.ErrorMessage);
+            return StatusCode(
+                validationResult.StatusCode,
+                ApiResponse<string>.FailureResponse(validationResult.ErrorMessage ?? "Invalid GitHub webhook request.", validationResult.StatusCode));
         }
 
-        var prElement = root.GetProperty("pull_request");
-        var prNumber = prElement.GetProperty("number").GetInt32();
-        
-        var repoElement = root.GetProperty("repository");
-        var ownerElement = repoElement.GetProperty("owner");
-        
-        var ownerId = ownerElement.GetProperty("id").GetInt64();
-        var repoName = repoElement.GetProperty("name").GetString()!;
-        var owner = ownerElement.GetProperty("login").GetString()!;
+        // Delegate logical validations and business processing to WebhookService
+        var result = await _webhookService.ProcessGitHubWebhookAsync(
+            eventTypeHeader.ToString(),
+            body,
+            HttpContext.RequestAborted);
 
-        _logger.LogInformation("Webhook received PR #{PrNumber} for {Owner}/{RepoName}", prNumber, owner, repoName);
-
-        // Process webhook using the dedicated service (looking up user by owner ID)
-        await _webhookService.ProcessPullRequestWebhookAsync(ownerId, owner, repoName, prNumber);
-
-        return Ok(ApiResponse<string>.SuccessResponse(
-            $"Webhook processing completed for PR #{prNumber}.",
-            "PR webhook processed successfully.",
-            200
-        ));
+        return Ok(ApiResponse<object>.SuccessResponse(
+            result.Data ?? result.Message,
+            result.Message,
+            200));
     }
 }

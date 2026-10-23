@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { repositoriesApi } from '../api/repositories';
 import { formatRelativeTime, formatDateTime } from '../utils/datetimeFormatter';
@@ -8,19 +8,39 @@ export default function Repositories() {
   const [repositories, setRepositories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
   
   // Search, Filter, and Sort States
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('All');
   const [sortByPrs, setSortByPrs] = useState('none'); // 'none' | 'desc' | 'asc'
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 10;
 
-  const fetchRepos = async () => {
+  // Debounce search input by 400ms before making the API call
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const fetchRepos = useCallback(async (isSync = false) => {
     try {
+      if (isSync) setSyncing(true);
       setLoading(true);
-      const data = await repositoriesApi.getRepositories({ search: searchQuery });
-      if (data && data.items && data.items.length > 0) {
+
+      const data = await repositoriesApi.getRepositories({
+        search: debouncedSearch,
+        role: roleFilter,
+        sortByPrs,
+        pageNumber: currentPage,
+        pageSize,
+      });
+
+      if (data && data.items) {
         setRepositories(
           data.items.map((r) => ({
             id: r.id || r.gitHubRepoId,
@@ -34,79 +54,49 @@ export default function Repositories() {
             fullUpdatedAt: formatDateTime(r.updatedAt),
           }))
         );
+        setTotalRecords(data.totalCount ?? data.items.length);
+        setTotalPages(data.totalPages ?? Math.max(1, Math.ceil((data.totalCount ?? data.items.length) / pageSize)));
       } else {
-        // Fallback default sample data if user hasn't imported any repos yet
-        setRepositories([
-          {
-            id: 1,
-            name: 'org-dev/fastapi-backend-service',
-            role: 'Public',
-            openPrs: 3,
-            webhookSecret: 'whsec_8a92...f72',
-            status: 'active',
-            formattedUpdatedAt: '2h ago',
-            fullUpdatedAt: 'Oct 7, 2026, 6:00 PM',
-          },
-          {
-            id: 2,
-            name: 'org-dev/react-frontend-app',
-            role: 'Private',
-            openPrs: 1,
-            webhookSecret: 'whsec_1b44...e88',
-            status: 'active',
-            formattedUpdatedAt: '1d ago',
-            fullUpdatedAt: 'Oct 6, 2026, 2:30 PM',
-          },
-        ]);
+        setRepositories([]);
+        setTotalRecords(0);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error('Failed to fetch repositories:', err);
+      setRepositories([]);
+      setTotalRecords(0);
+      setTotalPages(1);
     } finally {
       setLoading(false);
+      setSyncing(false);
     }
-  };
+  }, [debouncedSearch, roleFilter, sortByPrs, currentPage, pageSize]);
 
   useEffect(() => {
     fetchRepos();
-  }, []);
+  }, [fetchRepos]);
 
-  const handleSync = async () => {
-    setSyncing(true);
-    await fetchRepos();
-    setSyncing(false);
+  const handleRefresh = async () => {
+    await fetchRepos(true);
   };
 
-  // Filter and Sort Logic
-  const filteredAndSortedRepos = useMemo(() => {
-    return repositories
-      .filter((repo) => {
-        const matchesSearch = repo.name.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesRole = roleFilter === 'All' || repo.role === roleFilter;
-        return matchesSearch && matchesRole;
-      })
-      .sort((a, b) => {
-        if (sortByPrs === 'desc') {
-          return b.openPrs - a.openPrs;
-        } else if (sortByPrs === 'asc') {
-          return a.openPrs - b.openPrs;
-        }
-        return 0;
-      });
-  }, [repositories, searchQuery, roleFilter, sortByPrs]);
-
-  // Reset pagination to first page when search, filter, or sort changes
-  useEffect(() => {
+  const handleRoleFilterChange = (type) => {
+    setRoleFilter(type);
     setCurrentPage(1);
-  }, [searchQuery, roleFilter, sortByPrs]);
+  };
 
-  const totalRecords = filteredAndSortedRepos.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleSortByPrsChange = (e) => {
+    setSortByPrs(e.target.value);
+    setCurrentPage(1);
+  };
+
   const startIndex = (currentPage - 1) * pageSize;
   const endIndex = startIndex + pageSize;
-
-  const paginatedRepos = useMemo(() => {
-    return filteredAndSortedRepos.slice(startIndex, endIndex);
-  }, [filteredAndSortedRepos, startIndex, endIndex]);
 
   return (
     <div>
@@ -115,7 +105,7 @@ export default function Repositories() {
         <div>
           <nav className="flex items-center space-x-1.5 text-xs text-gray-500 mb-1">
             <Link to="/" className="hover:underline hover:text-gray-900 cursor-pointer transition-colors">
-              Dashboard
+              Home
             </Link>
             <span className="text-gray-400">&gt;</span>
             <span className="font-bold text-gray-900">Repositories</span>
@@ -132,7 +122,7 @@ export default function Repositories() {
         {/* Right side controls: Refresh */}
         <div className="flex items-center space-x-2 shrink-0">
           <button
-            onClick={handleSync}
+            onClick={handleRefresh}
             disabled={syncing || loading}
             className="text-xs border bg-white border-gray-300 px-2.5 py-1.5 text-gray-600 hover:bg-gray-50 flex items-center space-x-1.5 transition-colors cursor-pointer"
             title="Refresh Repositories from GitHub"
@@ -144,14 +134,14 @@ export default function Repositories() {
       </div>
 
       {/* Controls Bar: Type Filter Tabs & Search Bar */}
-      <div className="flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
+      <div className="flex flex-col md:flex-row flex-wrap gap-2.5 sm:gap-3 items-stretch md:items-center justify-between bg-gray-50 p-2.5 sm:p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
         {/* Type Tabs: All, Public, Private */}
-        <div className="flex items-center space-x-1 bg-white p-0.5 border border-gray-300 rounded">
+        <div className="flex items-center space-x-1 bg-white p-0.5 border border-gray-300 rounded overflow-x-auto w-full md:w-auto">
           {['All', 'Public', 'Private'].map((type) => (
             <button
               key={type}
-              onClick={() => setRoleFilter(type)}
-              className={`px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer ${
+              onClick={() => handleRoleFilterChange(type)}
+              className={`flex-1 md:flex-initial px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer text-center whitespace-nowrap ${
                 roleFilter === type
                   ? 'bg-blue-600 text-white shadow-xs'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -163,24 +153,24 @@ export default function Repositories() {
         </div>
 
         {/* Search Input & Sort Selector */}
-        <div className="flex flex-1 min-w-[220px] max-w-md relative items-center gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row w-full md:flex-1 md:max-w-md items-stretch sm:items-center gap-2 sm:gap-3 min-w-0">
+          <div className="relative flex-1 min-w-0">
             <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={handleSearchChange}
               placeholder="Search repository name..."
               className="w-full pl-8 pr-3 py-1.5 border border-gray-300 bg-white text-gray-800 focus:outline-none focus:border-gray-500 text-xs"
             />
           </div>
 
-          <div className="flex items-center space-x-1.5 shrink-0">
+          <div className="flex items-center space-x-1.5 shrink-0 justify-between sm:justify-start">
             <label className="text-xs text-gray-500 font-medium whitespace-nowrap">Sort PRs:</label>
             <select
               value={sortByPrs}
-              onChange={(e) => setSortByPrs(e.target.value)}
-              className="text-xs border border-gray-300 bg-white px-2.5 py-1.5 text-gray-800 focus:outline-none focus:border-gray-500 cursor-pointer"
+              onChange={handleSortByPrsChange}
+              className="text-xs border border-gray-300 bg-white px-2.5 py-1.5 text-gray-800 focus:outline-none focus:border-gray-500 cursor-pointer flex-1 sm:flex-initial"
             >
               <option value="none">Default</option>
               <option value="desc">Highest First</option>
@@ -191,11 +181,60 @@ export default function Repositories() {
       </div>
 
       {/* Table & Enclosed Stable Pagination Card */}
-      <div className="border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
-        {/* Scrollable table container */}
-        <div className="overflow-x-auto overflow-y-auto max-h-[460px] min-h-[380px]">
+      <div className="border border-gray-200 overflow-hidden shadow-xs bg-white flex flex-col">
+        {/* Mobile View: Clean card list (md:hidden) */}
+        <div className="block md:hidden divide-y divide-gray-100 overflow-y-auto max-h-[560px]">
+          {loading ? (
+            <div className="py-14 text-center text-xs text-gray-500">
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin mx-auto mb-2"></div>
+              Loading repositories...
+            </div>
+          ) : repositories.length > 0 ? (
+            repositories.map((repo) => (
+              <div key={repo.id} className="p-3.5 hover:bg-gray-50/70 transition-colors flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <Link
+                    to={`/pull-requests?repo=${encodeURIComponent(repo.name)}`}
+                    className="font-semibold text-gray-900 hover:text-blue-600 transition-colors flex items-center space-x-1.5 text-xs truncate min-w-0"
+                  >
+                    <i className="fa-regular fa-folder text-gray-400 text-xs shrink-0"></i>
+                    <span className="truncate">{repo.name}</span>
+                  </Link>
+                  <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full shrink-0 border ${
+                    repo.role === 'Private' ? 'bg-gray-100 text-gray-800 border-gray-200' : 'bg-blue-50 text-blue-700 border-blue-200'
+                  }`}>
+                    {repo.role}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs text-gray-500">
+                  <div className="flex items-center space-x-2">
+                    <span className="font-semibold text-gray-900">{repo.openPrs}</span>
+                    <span>Open PR{repo.openPrs !== 1 ? 's' : ''}</span>
+                    <span>&bull;</span>
+                    <span title={repo.fullUpdatedAt}>{repo.formattedUpdatedAt}</span>
+                  </div>
+                  <Link
+                    to={`/pull-requests?repo=${encodeURIComponent(repo.name)}`}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors shrink-0"
+                  >
+                    View PRs &rarr;
+                  </Link>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-14 px-4 text-center text-xs text-gray-500">
+              <i className="fa-regular fa-folder-open text-2xl text-gray-300 mb-2 block"></i>
+              No repositories found matching your search or filter.
+            </div>
+          )}
+        </div>
+
+        {/* Desktop View: Full Table (hidden md:block) */}
+        <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[580px] xl:max-h-[700px] min-h-[360px]">
           <table className="w-full text-left border-collapse bg-white text-sm">
-            <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-xs">
+            <thead className="sticky top-0 z-10 bg-gray-100 border-b border-gray-200 text-gray-600 font-semibold select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-xs">
               <tr>
                 <th className="py-2.5 px-3">Repository Name</th>
                 <th className="py-2.5 px-3">Type</th>
@@ -212,8 +251,8 @@ export default function Repositories() {
                     Loading repositories...
                   </td>
                 </tr>
-              ) : paginatedRepos.length > 0 ? (
-                paginatedRepos.map((repo) => (
+              ) : repositories.length > 0 ? (
+                repositories.map((repo) => (
                   <tr key={repo.id} className="hover:bg-gray-50/70 transition-colors">
                     <td className="py-2.5 px-3 font-semibold text-gray-900 hover:text-blue-600">
                       <Link
@@ -267,9 +306,9 @@ export default function Repositories() {
           </table>
         </div>
 
-        {/* Stable Pagination Footer enclosed in the card so it never jerks */}
-        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex items-center justify-between text-xs text-gray-600 select-none">
-          <div className="flex items-center space-x-1.5">
+        {/* Stable Pagination Footer */}
+        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-gray-600 select-none">
+          <div className="flex items-center space-x-1.5 text-center sm:text-left">
             <span>
               Showing <span className="font-semibold text-gray-900">{totalRecords === 0 ? 0 : startIndex + 1}</span> to{' '}
               <span className="font-semibold text-gray-900">{Math.min(endIndex, totalRecords)}</span> of{' '}

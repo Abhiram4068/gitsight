@@ -18,13 +18,19 @@ public class GitHubAuthService : IGitHubAuthService
         _httpClient = httpClient;
     }
 
-    public string GetAuthorizationUrl(string state)
+    public string GetAuthorizationUrl(string state, string? prompt = "select_account")
     {
         var clientId = _config["GitHubSettings:ClientId"];
         var redirectUri = _config["GitHubSettings:RedirectUri"];
         var scope = "repo,read:user,user:email";
 
-        return $"https://github.com/login/oauth/authorize?client_id={clientId}&redirect_uri={Uri.EscapeDataString(redirectUri!)}&scope={scope}&state={state}";
+        var url = $"https://github.com/login/oauth/authorize?client_id={clientId}&redirect_uri={Uri.EscapeDataString(redirectUri!)}&scope={scope}&state={state}";
+        if (!string.IsNullOrWhiteSpace(prompt))
+        {
+            url += $"&prompt={Uri.EscapeDataString(prompt)}";
+        }
+
+        return url;
     }
 
     public async Task<GitHubUserDto> ExchangeCodeForUserAsync(string code)
@@ -32,7 +38,7 @@ public class GitHubAuthService : IGitHubAuthService
         var clientId = _config["GitHubSettings:ClientId"];
         var clientSecret = _config["GitHubSettings:ClientSecret"];
 
-        // 1. Exchange OAuth code for GitHub Access Token
+        // 1. Exchange OAuth code for GitHub Access Token (server-to-server)
         using var request = new HttpRequestMessage(HttpMethod.Post, "https://github.com/login/oauth/access_token");
         request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
         request.Content = new FormUrlEncodedContent(new Dictionary<string, string>
@@ -42,6 +48,7 @@ public class GitHubAuthService : IGitHubAuthService
             ["code"] = code
         });
 
+        // Github returns the server with an access token
         var response = await _httpClient.SendAsync(request);
         response.EnsureSuccessStatusCode();
 
@@ -61,6 +68,7 @@ public class GitHubAuthService : IGitHubAuthService
             Credentials = new Credentials(accessToken)
         };
 
+        // Get current user
         var user = await githubClient.User.Current();
 
         return new GitHubUserDto(

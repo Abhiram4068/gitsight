@@ -37,7 +37,11 @@ export const pullRequestsApi = {
   },
 
   analyzePr: async ({ owner, repo, prNumber }) => {
-    const response = await axiosClient.post(`/api/pullrequests/${owner}/${repo}/${prNumber}/analyze`);
+    const response = await axiosClient.post(
+      `/api/pullrequests/${owner}/${repo}/${prNumber}/analyze`,
+      null,
+      { timeout: 210000 }
+    );
     return response.data?.data;
   },
 
@@ -57,6 +61,26 @@ export const pullRequestsApi = {
       reviewSummary,
       event,
     });
+    return response.data;
+  },
+
+  postCommentToGitHub: async ({ owner, repo, prNumber, issueId, filePath, line, comment, suggestedCode, suggestedRemovedCode }) => {
+    const response = await axiosClient.post(`/api/pullrequests/${owner}/${repo}/${prNumber}/post-comment`, {
+      owner,
+      repo,
+      prNumber: Number(prNumber),
+      issueId,
+      filePath,
+      line: Number(line),
+      comment,
+      suggestedCode,
+      suggestedRemovedCode,
+    });
+    return response.data;
+  },
+
+  toggleIssueIgnore: async (issueId) => {
+    const response = await axiosClient.patch(`/api/trackedissues/issues/${issueId}/toggle-ignore`);
     return response.data;
   },
 };

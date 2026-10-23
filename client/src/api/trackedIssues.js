@@ -39,6 +39,11 @@ export const trackedIssuesApi = {
   updateIssueStatus: async (id, status) => {
     const response = await axiosClient.patch(`/api/trackedissues/${id}/status`, { status });
     return response.data?.data;
+  },
+
+  toggleIssueIgnore: async (issueId) => {
+    const response = await axiosClient.patch(`/api/trackedissues/issues/${issueId}/toggle-ignore`);
+    return response.data;
   }
 };
 

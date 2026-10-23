@@ -28,7 +28,10 @@ public class ReviewCommentDto
 
 public class MergePrRequestDto
 {
-    public Guid RepositoryId { get; set; }
+    public Guid? RepositoryId { get; set; }
+    public string? Owner { get; set; }
+    public string? Repo { get; set; }
+    public string? RepositoryFullName { get; set; }
     public int PullRequestNumber { get; set; }
     public string MergeStrategy { get; set; } = "squash"; // "squash", "merge", "rebase"
     public string? CommitTitle { get; set; }
@@ -57,6 +60,8 @@ public class PostReviewCommentsRequestDto
 public class PullRequestDto
 {
     public Guid? Id { get; set; }
+    public Guid? RepositoryId { get; set; }
+    public long? GitHubRepoId { get; set; }
     public int PrNumber { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }
@@ -109,3 +114,17 @@ public class DiffLineDto
     public int? LineBase { get; set; }
     public int? LineCompare { get; set; }
 }
+
+public class PostSingleCommentRequestDto
+{
+    public string? Owner { get; set; }
+    public string? Repo { get; set; }
+    public int PrNumber { get; set; }
+    public Guid? IssueId { get; set; }
+    public string FilePath { get; set; } = string.Empty;
+    public int Line { get; set; }
+    public string Comment { get; set; } = string.Empty;
+    public string? SuggestedCode { get; set; }
+    public string? SuggestedRemovedCode { get; set; }
+}
+

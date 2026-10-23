@@ -109,6 +109,25 @@ public class PullRequestsController : ControllerBase
         var session = await _pullRequestService.GetPullRequestInsightsAsync(owner, repo, prNumber);
         if (session == null)
         {
+            var insight = await _pullRequestService.GetInsightAsync(owner, repo, prNumber);
+            if (insight != null)
+            {
+                if (insight.Status == Domain.Enums.PrInsightStatus.Analyzing)
+                {
+                    var timeSinceUpdate = DateTime.UtcNow - (insight.UpdatedAt ?? insight.CreatedAt);
+                    if (timeSinceUpdate.TotalMinutes >= 3)
+                    {
+                        await _pullRequestService.MarkInsightFailedAsync(insight.Id);
+                        insight.Status = Domain.Enums.PrInsightStatus.Failed;
+                    }
+                }
+
+                if (insight.Status == Domain.Enums.PrInsightStatus.Failed)
+                {
+                    return StatusCode(422, ApiResponse<AiReviewSession>.FailureResponse("The last AI review failed for this pull request.", 422));
+                }
+            }
+
             return NotFound(ApiResponse<AiReviewSession>.FailureResponse("No AI insights found for this pull request.", 404));
         }
 
@@ -128,9 +147,14 @@ public class PullRequestsController : ControllerBase
 
         try
         {
-            var session = await _pullRequestService.AnalyzePullRequestAsync(token, owner, repo, prNumber);
+            var session = await _pullRequestService.AnalyzePullRequestAsync(token, owner, repo, prNumber, _currentUserService.Email, isWebhook: false);
             _logger.LogInformation("Successfully completed AnalyzePullRequest for PR #{PrNumber}", prNumber);
             return Ok(ApiResponse<AiReviewSession>.SuccessResponse(session, "AI Code Review completed successfully."));
+        }
+        catch (TimeoutException ex)
+        {
+            _logger.LogWarning(ex, "Timeout during AnalyzePullRequest for PR #{PrNumber}", prNumber);
+            return StatusCode(408, ApiResponse<AiReviewSession>.FailureResponse(ex.Message, 408));
         }
         catch (InvalidOperationException ex)
         {
@@ -147,7 +171,7 @@ public class PullRequestsController : ControllerBase
     [HttpPost("merge")]
     public async Task<ActionResult<ApiResponse<bool>>> MergePullRequest([FromBody] MergePrRequestDto request)
     {
-        _logger.LogInformation("HTTP POST MergePullRequest initiated for PR #{PrNumber} in RepoId={RepositoryId}", request.PullRequestNumber, request.RepositoryId);
+        _logger.LogInformation("HTTP POST MergePullRequest initiated for PR #{PrNumber}", request.PullRequestNumber);
         var validationResult = await _mergeValidator.ValidateAsync(request);
         if (!validationResult.IsValid)
         {
@@ -194,6 +218,33 @@ public class PullRequestsController : ControllerBase
         catch (KeyNotFoundException)
         {
             return NotFound(ApiResponse<bool>.FailureResponse("Pull request insight not found.", 404));
+        }
+    }
+
+    [HttpPost("{owner}/{repo}/{prNumber}/post-comment")]
+    public async Task<ActionResult<ApiResponse<bool>>> PostSingleComment(
+        string owner, string repo, int prNumber, [FromBody] PostSingleCommentRequestDto request)
+    {
+        _logger.LogInformation("HTTP POST PostSingleComment initiated for {Owner}/{Repo} PR #{PrNumber}", owner, repo, prNumber);
+        var token = _currentUserService.GitHubAccessToken;
+        if (string.IsNullOrEmpty(token))
+        {
+            return Unauthorized(ApiResponse<bool>.FailureResponse("GitHub token missing.", 401));
+        }
+
+        try
+        {
+            var success = await _pullRequestService.PostSingleCommentToGitHubAsync(token, owner, repo, prNumber, request);
+            if (success)
+            {
+                return Ok(ApiResponse<bool>.SuccessResponse(true, "Comment successfully posted to GitHub PR."));
+            }
+            return StatusCode(500, ApiResponse<bool>.FailureResponse("GitHub rejected the comment request.", 500));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to post comment to GitHub for {Owner}/{Repo} PR #{PrNumber}", owner, repo, prNumber);
+            return StatusCode(500, ApiResponse<bool>.FailureResponse($"Failed to post comment: {ex.Message}", 500));
         }
     }
 }

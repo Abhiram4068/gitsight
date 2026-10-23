@@ -25,10 +25,13 @@ public class AuthController : ControllerBase
     }
 
     [HttpGet("login")]
-    public IActionResult Login()
+    public IActionResult Login([FromQuery] string? prompt = "select_account")
     {
+        // Generate a unique value to identify this OAuth login request.
         var state = Guid.NewGuid().ToString("N");
-        var authUrl = _authService.GetLoginUrl(state);
+        // Build the GitHub OAuth authorization URL with prompt=select_account to let user choose or switch accounts.
+        var authUrl = _authService.GetLoginUrl(state, prompt);
+        // Makes the browser redirect to github oauth page
         return Redirect(authUrl);
     }
 
@@ -64,5 +67,24 @@ public class AuthController : ControllerBase
         }
 
         return Ok(ApiResponse<UserProfileDto>.SuccessResponse(profile, "User profile fetched successfully."));
+    }
+
+    [Authorize]
+    [HttpPost("toggle-email")]
+    public async Task<ActionResult<ApiResponse<UserToggleEmailDto>>> ToggleEmail(CancellationToken cancellationToken = default)
+    {
+        var userId = _currentUserService.UserId;
+        if (!userId.HasValue)
+        {
+            return Unauthorized(ApiResponse<UserToggleEmailDto>.FailureResponse("User identity not found in token claims.", 401));
+        }
+
+        var result = await _authService.ToggleEmailAsync(userId.Value, cancellationToken);
+        if (result is null)
+        {
+            return NotFound(ApiResponse<UserToggleEmailDto>.FailureResponse("User not found.", 404));
+        }
+
+        return Ok(ApiResponse<UserToggleEmailDto>.SuccessResponse(result, result.Message));
     }
 }

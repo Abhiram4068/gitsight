@@ -14,130 +14,155 @@ public class GeminiService : IAiReviewService
     private readonly GeminiSettings _settings;
     private readonly ILogger<GeminiService> _logger;
 
+    private const int MaxChunkSize = 15000;
+    private const int MaxTotalChunks = 5;
+
+    private static readonly string[] NoiseFilePatterns = new[]
+    {
+        "package-lock.json",
+        "yarn.lock",
+        "pnpm-lock.yaml",
+        "composer.lock",
+        "Cargo.lock",
+        "packages.lock.json",
+        ".Designer.cs",
+        ".generated.cs",
+        ".min.js",
+        ".min.css",
+        ".map",
+        ".svg",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".ico",
+        "dist/",
+        "build/",
+        "bin/",
+        "obj/",
+        "/Migrations/"
+    };
+
     public GeminiService(HttpClient httpClient, IConfiguration config, ILogger<GeminiService> logger)
     {
         _httpClient = httpClient;
         _settings = config.GetSection("GeminiSettings").Get<GeminiSettings>() ?? new GeminiSettings
         {
-            ApiKey = config["Gemini:ApiKey"] ?? string.Empty,
-            Model = config["Gemini:Model"] ?? "gemini-3.8-flash"
+            ApiKey = config["GeminiSettings:ApiKey"] ?? config["Gemini:ApiKey"] ?? string.Empty,
+            Model = config["GeminiSettings:Model"] ?? config["Gemini:Model"] ?? "gemini-3.8-flash"
         };
         _logger = logger;
     }
 
-    // Maximum allowed character length for each diff chunk block.
-    private const int MaxChunkSize = 15000;
-
-    public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null)
+    public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null, List<string>? customRules = null)
     {
         _logger.LogInformation("Starting AI Diff analysis. PR Title: {PrTitle}, Diff length: {DiffLength}", prTitle, diffText.Length);
         
-        // Ensure that the Gemini API key is properly configured.
         if (string.IsNullOrWhiteSpace(_settings.ApiKey))
         {
             _logger.LogError("Gemini API key is not configured.");
-            // Throw an exception if the API key is missing.
-            throw new InvalidOperationException("Gemini API key is not configured. Please set GeminiSettings:ApiKey in appsettings.json.");
+            throw new InvalidOperationException("Gemini API key is not configured. Please set GeminiSettings:ApiKey in appsettings.json or user-secrets.");
         }
 
-        // Split the entire diff string by the git diff header.
-        var files = diffText.Split(new[] { "diff --git" }, StringSplitOptions.RemoveEmptyEntries);
-        // List to hold our dynamically created diff chunk strings.
+        var rawFiles = diffText.Split(new[] { "diff --git" }, StringSplitOptions.RemoveEmptyEntries);
+        var relevantFiles = new List<string>();
+
+        foreach (var file in rawFiles)
+        {
+            var firstLineEnd = file.IndexOf('\n');
+            var header = firstLineEnd > 0 ? file.Substring(0, firstLineEnd) : file;
+
+            bool isNoise = NoiseFilePatterns.Any(pattern => header.Contains(pattern, StringComparison.OrdinalIgnoreCase));
+            if (isNoise)
+            {
+                _logger.LogInformation("Skipping generated/noise file in diff: {Header}", header.Trim());
+                continue;
+            }
+
+            var content = "diff --git" + file;
+            if (content.Length > 8000)
+            {
+                content = content.Substring(0, 8000) + "\n\n... [File diff truncated due to size limits]\n";
+            }
+
+            relevantFiles.Add(content);
+        }
+
         var chunks = new List<string>();
-        // StringBuilder to actively build the current diff chunk safely.
         var currentChunk = new StringBuilder();
 
-        // Loop through each separated file from the parsed diff.
-        foreach (var file in files)
+        foreach (var fileContent in relevantFiles)
         {
-            // Reattach the git header that was removed by splitting.
-            var fileContent = "diff --git" + file;
-            
-            // Check if adding this file exceeds the maximum chunk size.
+            if (chunks.Count >= MaxTotalChunks)
+            {
+                _logger.LogInformation("Reached max chunk limit ({MaxTotalChunks}) for large PR with {Count} files.", MaxTotalChunks, rawFiles.Length);
+                break;
+            }
+
             if (currentChunk.Length + fileContent.Length > MaxChunkSize && currentChunk.Length > 0)
             {
-                // Add the completed chunk to the final chunk list.
                 chunks.Add(currentChunk.ToString());
-                // Clear the string builder to start a new chunk.
                 currentChunk.Clear();
+
+                if (chunks.Count >= MaxTotalChunks) break;
             }
             
-            // Append the current file content to the active chunk.
             currentChunk.AppendLine(fileContent);
         }
 
-        // Add any remaining content in the string builder to chunks.
-        if (currentChunk.Length > 0)
+        if (currentChunk.Length > 0 && chunks.Count < MaxTotalChunks)
         {
-            // Finalize the last chunk and add it to list.
             chunks.Add(currentChunk.ToString());
         }
 
-        // Initialize the master result object to aggregate chunk results.
+        // If all files were filtered as noise, retain at least a summary chunk of the first relevant raw file
+        if (chunks.Count == 0 && rawFiles.Length > 0)
+        {
+            chunks.Add("diff --git" + (rawFiles[0].Length > 5000 ? rawFiles[0].Substring(0, 5000) : rawFiles[0]));
+        }
+
         var masterResult = new GeminiReviewResultDto
         {
-            // Initialize the issues list to prevent null reference errors.
             Issues = new List<GeminiInlineCommentDto>()
         };
-        // Use a string builder to aggregate the executive summaries efficiently.
         var summaries = new StringBuilder();
 
-        // Loop through each chunk and process it with the AI.
         for (int i = 0; i < chunks.Count; i++)
         {
-            // Create a clear indicator of which chunk is processing.
             var chunkTitle = $"PULL REQUEST TITLE: {prTitle} (Part {i + 1} of {chunks.Count})";
-            // Call the helper method to get the AI analysis chunk.
             var chunkResult = await AnalyzeChunkAsync(chunks[i], chunkTitle, prDescription);
 
-            // Accumulate the executive summary from the current chunk result.
             summaries.AppendLine(chunkResult.ExecutiveSummary);
-            // Add the chunk's syntax errors count to the master total.
             masterResult.SyntaxErrorsCount += chunkResult.SyntaxErrorsCount;
-            // Add the chunk's security issues count to the master total.
             masterResult.SecurityIssuesCount += chunkResult.SecurityIssuesCount;
-            // Add the chunk's breaches count to the master total.
             masterResult.BreachesCount += chunkResult.BreachesCount;
-            // Add the chunk's performance issues count to the master total.
             masterResult.PerformanceIssuesCount += chunkResult.PerformanceIssuesCount;
-            // Add the chunk's code smells count to the master total.
             masterResult.CodeSmellsCount += chunkResult.CodeSmellsCount;
-            // Add the chunk's final suggestions count to the master total.
-            masterResult.FinalSuggestionsCount += chunkResult.FinalSuggestionsCount;
 
-            // Ensure the chunk actually returned issues before adding them.
             if (chunkResult.Issues != null)
             {
-                // Add all issues from the chunk to the master list.
                 masterResult.Issues.AddRange(chunkResult.Issues);
             }
 
-            // Keep a running sum of the overall confidence scores temporarily.
             masterResult.OverallConfidenceScore += chunkResult.OverallConfidenceScore;
         }
 
-        // Average the overall confidence score across all processed chunks safely.
         if (chunks.Count > 0)
         {
-            // Divide the total score by the number of chunks processed.
             masterResult.OverallConfidenceScore /= chunks.Count;
         }
 
-        // Set the master executive summary from the accumulated string builder.
-        masterResult.ExecutiveSummary = summaries.ToString();
+        masterResult.FinalSuggestionsCount = masterResult.Issues.Count;
+        masterResult.ExecutiveSummary = summaries.ToString().Trim();
 
-        _logger.LogInformation("Completed AI Diff analysis. Extracted {TotalIssues} total issues across {ChunkCount} chunks.", masterResult.Issues.Count, chunks.Count);
+        _logger.LogInformation("Completed Gemini AI Diff analysis. Extracted {TotalIssues} total issues across {ChunkCount} chunks.", masterResult.Issues.Count, chunks.Count);
 
-        // Return the final aggregated review result to the caller.
         return masterResult;
     }
 
     private async Task<GeminiReviewResultDto> AnalyzeChunkAsync(string diffChunk, string prTitle, string? prDescription)
     {
-        // Load the system prompt from the predefined application prompts class.
         var systemPrompt = GeminiPrompts.SystemPrompt;
 
-        // Construct the user message containing title, description, and diff.
         var userMessage = $"""
         PULL REQUEST TITLE: {prTitle}
         PULL REQUEST DESCRIPTION: {prDescription ?? "No description provided."}
@@ -146,82 +171,60 @@ public class GeminiService : IAiReviewService
         {diffChunk}
         """;
 
-        // Create the JSON payload object expected by the Gemini API.
         var payload = new
         {
-            // Define the contents array required for the request body.
             contents = new[]
             {
-                // Create an anonymous object for the message parts array.
                 new
                 {
-                    // Define the parts array containing the text prompt.
                     parts = new[]
                     {
-                        // Combine the system prompt and user message together.
                         new { text = $"{systemPrompt}\n\n{userMessage}" }
                     }
                 }
             },
-            // Specify the generation configuration for the API request.
             generationConfig = new
             {
-                // Set the temperature to zero point two for deterministic output.
                 temperature = 0.2,
-                // Request that the model returns the response as JSON format.
                 responseMimeType = "application/json"
             }
         };
 
-        // Determine the primary model to use from the application settings.
-        var primaryModel = string.IsNullOrEmpty(_settings.Model) ? "gemini-3.1-flash-lite" : _settings.Model;
-        // Define the array of models to try in fallback order.
-        var modelsToTry = new[] { primaryModel, "gemini-3-flash-preview" }; 
+        var primaryModel = string.IsNullOrWhiteSpace(_settings.Model) ? "gemini-3.8-flash" : _settings.Model;
+        var modelsToTry = new[] { primaryModel, "gemini-3.8-flash", "gemini-3.5-flash", "gemini-flash-latest" }
+            .Distinct()
+            .ToArray();
         
-        // Declare the HTTP response message variable to hold the response.
-        HttpResponseMessage response = null;
-        // Keep track of the current model being tested during iteration.
+        HttpResponseMessage? response = null;
         string currentModel = primaryModel;
         
-        // Loop through the models to attempt the request with fallbacks.
         for (int i = 0; i < modelsToTry.Length; i++)
         {
-            // Update the current model to the model in the loop.
             currentModel = modelsToTry[i];
-            // Construct the full URL endpoint for the current Gemini model.
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{currentModel}:generateContent?key={_settings.ApiKey}";
             
-            // Create a new HTTP POST request message for the endpoint.
             using var request = new HttpRequestMessage(HttpMethod.Post, url);
-            // Serialize the payload to JSON and attach as request content.
             request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-            // Send the asynchronous HTTP request to the Gemini API endpoint.
             response = await _httpClient.SendAsync(request);
             
-            // Check if the HTTP response indicates a successful status code.
             if (response.IsSuccessStatusCode)
             {
-                // Exit the fallback loop since the request was entirely successful.
                 break;
             }
             
-            // Check if we have exhausted the last available fallback model option.
+            var err = await response.Content.ReadAsStringAsync();
+            _logger.LogWarning("Gemini API call to {Model} returned {StatusCode}: {Error}", currentModel, response.StatusCode, err);
+
             if (i == modelsToTry.Length - 1)
             {
-                // Read the error message content from the failed HTTP response.
-                var err = await response.Content.ReadAsStringAsync();
-                // Throw an exception detailing the exhausted models and last error.
                 throw new HttpRequestException($"Failed to analyze diff with Gemini API. Exhausted all fallback models. Last error ({currentModel}): {response.StatusCode} - {err}");
             }
         }
 
-        // Read the successful JSON response content from the HTTP response.
-        var json = await response.Content.ReadAsStringAsync();
-        // Parse the JSON string into a structured JsonDocument for traversal.
+        var json = await response!.Content.ReadAsStringAsync();
         using var doc = JsonDocument.Parse(json);
         
-        // Extract the generated text from the deeply nested JSON structure.
         var text = doc.RootElement
             .GetProperty("candidates")[0]
             .GetProperty("content")
@@ -229,32 +232,38 @@ public class GeminiService : IAiReviewService
             .GetProperty("text")
             .GetString();
 
-        // Validate that the extracted text is not null or completely empty.
         if (string.IsNullOrWhiteSpace(text))
         {
-            // Throw an exception if the model returned an empty string response.
             throw new InvalidOperationException("Empty response received from Gemini.");
         }
 
-        // Trim any leading or trailing whitespace from the extracted text.
         var cleanedText = text.Trim();
-        // Remove markdown JSON code blocks from the beginning if they exist.
         if (cleanedText.StartsWith("```json")) cleanedText = cleanedText.Substring(7);
-        // Remove generic markdown code blocks from the beginning if they exist.
         if (cleanedText.StartsWith("```")) cleanedText = cleanedText.Substring(3);
-        // Remove markdown code blocks from the end if they are present.
         if (cleanedText.EndsWith("```")) cleanedText = cleanedText.Substring(0, cleanedText.Length - 3);
-        // Perform a final trim to ensure all whitespace is perfectly clean.
         cleanedText = cleanedText.Trim();
 
-        // Deserialize the cleaned JSON string into the required DTO structure.
         var result = JsonSerializer.Deserialize<GeminiReviewResultDto>(cleanedText, new JsonSerializerOptions
         {
-            // Make the JSON property name matching case insensitive for safety.
             PropertyNameCaseInsensitive = true
         });
 
-        // Return the successfully deserialized object or throw an error immediately.
-        return result ?? throw new InvalidOperationException("Failed to deserialize Gemini output.");
+        if (result == null)
+        {
+            throw new InvalidOperationException("Failed to deserialize Gemini output.");
+        }
+
+        result.Issues ??= new List<GeminiInlineCommentDto>();
+
+        // Normalize counts to match parsed issues
+        result.FinalSuggestionsCount = result.Issues.Count;
+        result.SecurityIssuesCount = result.Issues.Count(i => i.IssueType.Equals("Security", StringComparison.OrdinalIgnoreCase));
+        result.BreachesCount = result.Issues.Count(i => i.IssueType.Equals("Breach", StringComparison.OrdinalIgnoreCase));
+        result.PerformanceIssuesCount = result.Issues.Count(i => i.IssueType.Equals("Performance", StringComparison.OrdinalIgnoreCase));
+        result.CodeSmellsCount = result.Issues.Count(i => i.IssueType.Equals("CodeSmell", StringComparison.OrdinalIgnoreCase));
+
+        _logger.LogInformation("Gemini model {Model} successfully extracted {Count} issues for chunk.", currentModel, result.Issues.Count);
+
+        return result;
     }
 }

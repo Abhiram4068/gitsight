@@ -4,5 +4,5 @@ namespace GitSight.Application.Common.Interfaces;
 
 public interface IAiReviewService
 {
-    Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null);
+    Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null, List<string>? customRules = null);
 }

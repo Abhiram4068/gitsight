@@ -7,7 +7,7 @@ import StatusBadge from '../components/StatusBadge';
 
 export default function PullRequests() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const repoFromUrl = searchParams.get('repo') || '';
+  const repoFromUrl = searchParams.get('repo') || searchParams.get('id') || searchParams.get('repositoryId') || '';
 
   // Repositories state
   const [repositories, setRepositories] = useState([]);
@@ -19,12 +19,21 @@ export default function PullRequests() {
   const [refreshing, setRefreshing] = useState(false);
   const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'open' | 'merged' | 'closed'
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const pageSize = 10;
+
+  // Debounce search input by 400ms before making the API call
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
 
   // Fetch available repositories list
   useEffect(() => {
@@ -34,7 +43,10 @@ export default function PullRequests() {
         if (data && data.items && data.items.length > 0) {
           setRepositories(data.items);
           if (!selectedRepo) {
-            const initial = repoFromUrl || data.items[0].fullName || data.items[0].name;
+            const matched = data.items.find(
+              (r) => r.id === repoFromUrl || String(r.gitHubRepoId) === repoFromUrl || r.fullName === repoFromUrl || r.name === repoFromUrl
+            );
+            const initial = matched?.fullName || matched?.name || repoFromUrl || data.items[0].fullName || data.items[0].name;
             setSelectedRepo(initial);
           }
         }
@@ -47,11 +59,17 @@ export default function PullRequests() {
 
   // Update selectedRepo when URL changes
   useEffect(() => {
-    if (repoFromUrl && repoFromUrl !== selectedRepo) {
-      setSelectedRepo(repoFromUrl);
-      setCurrentPage(1);
+    if (repoFromUrl) {
+      const matched = repositories.find(
+        (r) => r.id === repoFromUrl || String(r.gitHubRepoId) === repoFromUrl || r.fullName === repoFromUrl || r.name === repoFromUrl
+      );
+      const target = matched?.fullName || matched?.name || repoFromUrl;
+      if (target !== selectedRepo) {
+        setSelectedRepo(target);
+        setCurrentPage(1);
+      }
     }
-  }, [repoFromUrl]);
+  }, [repoFromUrl, repositories]);
 
   // Fetch Pull Requests
   const fetchPullRequests = useCallback(async (isRefresh = false) => {
@@ -64,7 +82,7 @@ export default function PullRequests() {
       const data = await pullRequestsApi.getPullRequests({
         repoFullName: selectedRepo,
         state: statusFilter,
-        search: searchQuery,
+        search: debouncedSearch,
         pageNumber: currentPage,
         pageSize,
       });
@@ -87,7 +105,7 @@ export default function PullRequests() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [selectedRepo, statusFilter, searchQuery, currentPage, pageSize]);
+  }, [selectedRepo, statusFilter, debouncedSearch, currentPage, pageSize]);
 
   useEffect(() => {
     fetchPullRequests();
@@ -110,13 +128,13 @@ export default function PullRequests() {
   const endIndex = startIndex + pageSize;
 
   return (
-    <div>
+    <div className="space-y-3">
       {/* Header section with repo switcher and refresh */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pb-3 border-b border-gray-200 gap-3">
         <div>
           <nav className="flex items-center space-x-1.5 text-xs text-gray-500 mb-1">
             <Link to="/" className="hover:underline hover:text-gray-900 cursor-pointer transition-colors">
-              Dashboard
+              Home
             </Link>
             {repoFromUrl && (
               <>
@@ -130,11 +148,13 @@ export default function PullRequests() {
             <span className="font-bold text-gray-900">Pull Requests</span>
           </nav>
 
-          <h1 className="text-lg font-bold text-gray-900 mt-1 flex items-center space-x-2">
-            <span className="font-bold text-blue-700 ">Pull Requests </span>
-            <span className="text-sm font-normal  px-2 py-0.5 ">
-              {selectedRepo}
-            </span>
+          <h1 className="text-base sm:text-lg font-bold text-gray-900 mt-1 flex flex-wrap items-center gap-1.5">
+            <span className="font-bold text-blue-700">Pull Requests</span>
+            {selectedRepo && (
+              <span className="text-xs sm:text-sm font-normal text-gray-600 bg-gray-100 px-2 py-0.5 rounded truncate max-w-[200px] sm:max-w-xs md:max-w-md" title={selectedRepo}>
+                {selectedRepo}
+              </span>
+            )}
           </h1>
           <p className="text-xs text-gray-500 mt-0.5">
             Review pull request diffs, automated AI suggestions, and manage approvals.
@@ -142,14 +162,14 @@ export default function PullRequests() {
         </div>
 
         {/* Right side controls: Repo selector and refresh */}
-        <div className="flex items-center space-x-2 shrink-0">
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
           {repositories.length > 0 && (
-            <div className="flex items-center space-x-1.5">
-              <label className="text-xs text-gray-500 font-medium">Repo:</label>
+            <div className="flex items-center space-x-1.5 flex-1 sm:flex-initial min-w-0">
+              <label className="text-xs text-gray-500 font-medium shrink-0">Repo:</label>
               <select
                 value={selectedRepo}
                 onChange={(e) => handleRepoChange(e.target.value)}
-                className="text-xs border border-gray-300 bg-white px-2.5 py-1.5 text-gray-800 focus:outline-none focus:border-gray-500 cursor-pointer max-w-[200px] truncate"
+                className="text-xs border border-gray-300 bg-white px-2.5 py-1.5 text-gray-800 focus:outline-none focus:border-gray-500 cursor-pointer w-full sm:w-auto sm:max-w-[200px] truncate"
               >
                 {repositories.map((r) => {
                   const val = r.fullName || r.name;
@@ -166,22 +186,22 @@ export default function PullRequests() {
           <button
             onClick={() => fetchPullRequests(true)}
             disabled={refreshing || loading}
-            className="text-xs border bg-white border-gray-300 px-2.5 py-1.5 text-gray-600 hover:bg-gray-50 flex items-center space-x-1.5 transition-colors cursor-pointer"
+            className="text-xs border bg-white border-gray-300 px-2.5 py-1.5 text-gray-600 hover:bg-gray-50 flex items-center space-x-1.5 transition-colors cursor-pointer shrink-0"
             title="Refresh Pull Requests from GitHub"
           >
             <i className={`fa-solid fa-rotate-right text-xs ${refreshing ? 'animate-spin' : ''}`}></i>
-            <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
+            <span className="inline">{refreshing ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
       </div>
 
       {/* Controls Bar: Status Filter Tabs & Search Bar */}
-      <div className="flex flex-wrap gap-3 items-center justify-between bg-gray-50 p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
+      <div className="flex flex-col md:flex-row flex-wrap gap-2.5 sm:gap-3 items-stretch md:items-center justify-between bg-gray-50 p-2.5 sm:p-3 border border-gray-200 text-xs text-gray-700 border-t-0 border-b-0">
         {/* Status Tabs: All, Open, Merged, Closed */}
-        <div className="flex items-center space-x-1 bg-white p-0.5 border border-gray-300 rounded">
+        <div className="flex items-center gap-1 bg-white p-0.5 border border-gray-300 rounded overflow-x-auto w-full md:w-auto">
           <button
             onClick={() => handleStatusFilterChange('all')}
-            className={`px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer ${
+            className={`flex-1 md:flex-initial px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer text-center whitespace-nowrap ${
               statusFilter === 'all'
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -191,7 +211,7 @@ export default function PullRequests() {
           </button>
           <button
             onClick={() => handleStatusFilterChange('open')}
-            className={`px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer ${
+            className={`flex-1 md:flex-initial px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer text-center whitespace-nowrap ${
               statusFilter === 'open'
                 ? 'bg-emerald-600 text-white shadow-xs'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -201,7 +221,7 @@ export default function PullRequests() {
           </button>
           <button
             onClick={() => handleStatusFilterChange('merged')}
-            className={`px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer ${
+            className={`flex-1 md:flex-initial px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer text-center whitespace-nowrap ${
               statusFilter === 'merged'
                 ? 'bg-purple-600 text-white shadow-xs'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -211,7 +231,7 @@ export default function PullRequests() {
           </button>
           <button
             onClick={() => handleStatusFilterChange('closed')}
-            className={`px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer ${
+            className={`flex-1 md:flex-initial px-3 py-1 font-medium rounded text-xs transition-colors cursor-pointer text-center whitespace-nowrap ${
               statusFilter === 'closed'
                 ? 'bg-gray-800 text-white shadow-xs'
                 : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -222,7 +242,7 @@ export default function PullRequests() {
         </div>
 
         {/* Search Filter */}
-        <div className="flex-1 min-w-[220px] max-w-md relative">
+        <div className="w-full md:flex-1 md:max-w-md relative min-w-0">
           <i className="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-gray-400 text-xs"></i>
           <input
             type="text"
@@ -238,14 +258,138 @@ export default function PullRequests() {
       </div>
 
       {/* Table & Enclosed Stable Pagination Card */}
-      <div className="border border-gray-200 overflow-hidden shadow-sm bg-white flex flex-col">
-        {/* Scrollable table container */}
-        <div className="overflow-x-auto overflow-y-auto max-h-[460px] min-h-[380px]">
+      <div className="border border-gray-200 overflow-hidden shadow-xs bg-white flex flex-col">
+        {/* Mobile View: Clean, touch-friendly card list (md:hidden) */}
+        <div className="block md:hidden divide-y divide-gray-100 overflow-y-auto max-h-[560px]">
+          {loading ? (
+            <div className="py-14 text-center text-xs text-gray-500">
+              <div className="w-5 h-5 border-2 border-gray-300 border-t-gray-800 rounded-full animate-spin mx-auto mb-2"></div>
+              Fetching pull requests for {selectedRepo}...
+            </div>
+          ) : prs.length > 0 ? (
+            prs.map((pr) => (
+              <div key={pr.prNumber} className="p-3.5 hover:bg-gray-50/70 transition-colors flex flex-col gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center space-x-2">
+                    <a
+                      href={pr.htmlUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-mono font-bold text-blue-600 hover:underline text-xs"
+                      title="Open PR on GitHub"
+                    >
+                      #{pr.prNumber}
+                    </a>
+                    <StatusBadge state={pr.state} mergedAt={pr.mergedAt} isDraft={pr.isDraft} />
+                  </div>
+
+                  <div>
+                    {pr.analysisStatus === 'analyzed' ? (
+                      <span className="px-2 py-0.5 text-[10px] font-semibold text-emerald-800 bg-emerald-100 rounded-full inline-flex items-center border border-emerald-200 shadow-xs">
+                        Analyzed
+                      </span>
+                    ) : pr.analysisStatus === 'analyzing' ? (
+                      <span className="px-2 py-0.5 text-[10px] font-semibold text-blue-800 bg-blue-100 border border-blue-200 rounded-full inline-flex items-center shadow-xs">
+                        <div className="w-1.5 h-1.5 border-[1.5px] border-blue-400 border-t-blue-800 rounded-full animate-spin mr-1"></div>
+                        Analyzing
+                      </span>
+                    ) : pr.analysisStatus === 'failed' ? (
+                      <span className="px-2 py-0.5 text-[10px] font-semibold text-red-800 bg-red-100 border border-red-200 rounded-full inline-flex items-center shadow-xs">
+                        Failed
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 text-[10px] font-semibold text-gray-700 bg-gray-100 border border-gray-200 rounded-full inline-flex items-center shadow-xs">
+                        Pending
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <Link
+                  to={`/pr-detail?repo=${encodeURIComponent(selectedRepo)}&pr=${pr.prNumber}`}
+                  className="font-semibold text-gray-900 hover:text-blue-600 transition-colors text-xs line-clamp-2"
+                  title={pr.title}
+                >
+                  {pr.title}
+                </Link>
+
+                <div className="text-[11px] text-gray-400 font-mono flex items-center space-x-1 truncate">
+                  <span className="text-gray-600 truncate max-w-[120px]">{pr.headBranch || 'head'}</span>
+                  <span>&rarr;</span>
+                  <span className="text-gray-500 truncate max-w-[120px]">{pr.baseBranch || 'main'}</span>
+                </div>
+
+                {pr.labels && pr.labels.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {pr.labels.map((lbl, idx) => (
+                      <span
+                        key={idx}
+                        className="text-[10px] bg-gray-100 text-gray-600 px-1.5 py-0.2 rounded border border-gray-200"
+                      >
+                        {lbl}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-between pt-1 border-t border-gray-100 text-xs">
+                  <div className="flex items-center space-x-1.5 min-w-0">
+                    {pr.authorAvatarUrl ? (
+                      <img
+                        src={pr.authorAvatarUrl}
+                        alt={pr.author}
+                        className="w-4 h-4 rounded-full border border-gray-200 object-cover shrink-0"
+                      />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full bg-gray-200 text-gray-700 text-[9px] font-bold flex items-center justify-center shrink-0">
+                        {pr.author ? pr.author.charAt(0).toUpperCase() : 'U'}
+                      </div>
+                    )}
+                    <span className="font-medium text-gray-800 text-[11px] truncate max-w-[90px]">{pr.author}</span>
+                    <span className="text-[10px] text-gray-400">&bull;</span>
+                    <span className="text-[10px] text-gray-400 whitespace-nowrap">{formatRelativeTime(pr.createdAt)}</span>
+                  </div>
+
+                  <div className="flex items-center space-x-2 shrink-0">
+                    <div className="font-mono text-[11px]">
+                      <span className="text-emerald-600 font-semibold">+{pr.additions}</span>{' '}
+                      <span className="text-red-600 font-semibold">-{pr.deletions}</span>
+                    </div>
+                    <Link
+                      to={`/pr-detail?repo=${encodeURIComponent(selectedRepo)}&pr=${pr.prNumber}`}
+                      className="text-xs font-semibold text-blue-600 hover:text-blue-800 bg-blue-50 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors"
+                    >
+                      View &rarr;
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="py-14 px-4 text-center text-xs text-gray-500">
+              <i className="fa-solid fa-code-pull-request text-2xl text-gray-300 mb-2 block"></i>
+              No {statusFilter !== 'all' ? statusFilter : ''} pull requests found for {selectedRepo}.
+              {statusFilter !== 'all' && (
+                <div className="mt-2">
+                  <button
+                    onClick={() => handleStatusFilterChange('all')}
+                    className="text-xs text-blue-600 hover:underline cursor-pointer"
+                  >
+                    View all pull requests &rarr;
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View (>= md) */}
+        <div className="hidden md:block overflow-x-auto overflow-y-auto max-h-[580px] xl:max-h-[700px] min-h-[360px]">
           <table className="w-full text-left border-collapse bg-white text-sm">
             <thead className="sticky top-0 z-10 bg-gray-50 border-b border-gray-200 text-gray-600 font-semibold select-none shadow-[0_1px_2px_rgba(0,0,0,0.03)] text-xs">
               <tr>
                 <th className="py-2.5 px-3 w-16 text-center">PR #</th>
-                <th className="py-2.5 px-3">Title & Branches</th>
+                <th className="py-2.5 px-3 min-w-[200px]">Title & Branches</th>
                 <th className="py-2.5 px-3">Author</th>
                 <th className="py-2.5 px-3">Status</th>
                 <th className="py-2.5 px-3">Diff Changes</th>
@@ -263,9 +407,6 @@ export default function PullRequests() {
                 </tr>
               ) : prs.length > 0 ? (
                 prs.map((pr) => {
-                  const isOpen = pr.state === 'open';
-                  const isMerged = pr.isMerged || pr.state === 'merged';
-
                   return (
                     <tr key={pr.prNumber} className="hover:bg-gray-50/70 transition-colors">
                       {/* PR # */}
@@ -282,7 +423,7 @@ export default function PullRequests() {
                       </td>
 
                       {/* Title & Branches */}
-                      <td className="py-2.5 px-3 max-w-sm">
+                      <td className="py-2.5 px-3 min-w-[200px] max-w-sm lg:max-w-md xl:max-w-xl">
                         <Link
                           to={`/pr-detail?repo=${encodeURIComponent(selectedRepo)}&pr=${pr.prNumber}`}
                           className="font-semibold text-gray-900 hover:text-blue-600 transition-colors block truncate"
@@ -421,8 +562,8 @@ export default function PullRequests() {
         </div>
 
         {/* Stable Pagination Footer enclosed in the card so it never jerks */}
-        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex items-center justify-between text-xs text-gray-600 select-none">
-          <div className="flex items-center space-x-1.5">
+        <div className="border-t border-gray-200 bg-gray-50 px-3.5 py-2.5 flex flex-col sm:flex-row items-center justify-between gap-2.5 text-xs text-gray-600 select-none">
+          <div className="flex items-center space-x-1.5 text-center sm:text-left">
             <span>
               Showing <span className="font-semibold text-gray-900">{totalRecords === 0 ? 0 : startIndex + 1}</span> to{' '}
               <span className="font-semibold text-gray-900">{Math.min(endIndex, totalRecords)}</span> of{' '}

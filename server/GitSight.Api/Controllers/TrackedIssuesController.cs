@@ -17,13 +17,25 @@ public class TrackedIssuesController : ControllerBase
 {
     private readonly ITrackedIssueService _trackedIssueService;
     private readonly IValidator<TrackIssuesRequestDto> _validator;
+    private readonly ICurrentUserService _currentUserService;
 
     public TrackedIssuesController(
         ITrackedIssueService trackedIssueService,
-        IValidator<TrackIssuesRequestDto> validator)
+        IValidator<TrackIssuesRequestDto> validator,
+        ICurrentUserService currentUserService)
     {
         _trackedIssueService = trackedIssueService;
         _validator = validator;
+        _currentUserService = currentUserService;
+    }
+
+    /// <summary>
+    /// Attempts to get the current user's ID. Returns true if successful, false otherwise.
+    /// </summary>
+    private bool TryGetUserId(out Guid userId)
+    {
+        userId = _currentUserService.UserId ?? Guid.Empty;
+        return _currentUserService.UserId.HasValue;
     }
 
     [HttpPost]
@@ -37,7 +49,10 @@ public class TrackedIssuesController : ControllerBase
             return BadRequest(ApiResponse<bool>.FailureResponse("Validation failed.", 400, errors));
         }
 
-        var response = await _trackedIssueService.TrackIssuesAsync(request);
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse<bool>.FailureResponse("User identity not found in token claims.", 401));
+
+        var response = await _trackedIssueService.TrackIssuesAsync(request, userId);
         return Ok(response);
     }
 
@@ -52,14 +67,20 @@ public class TrackedIssuesController : ControllerBase
             return BadRequest(ApiResponse<bool>.FailureResponse("Validation failed.", 400, errors));
         }
 
-        var response = await _trackedIssueService.UntrackIssuesAsync(request);
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse<bool>.FailureResponse("User identity not found in token claims.", 401));
+
+        var response = await _trackedIssueService.UntrackIssuesAsync(request, userId);
         return Ok(response);
     }
 
     [HttpGet("prs")]
     public async Task<ActionResult<ApiResponse<List<TrackedPrDto>>>> GetTrackedPrs([FromQuery] string? search = null)
     {
-        var response = await _trackedIssueService.GetTrackedPrsAsync(search);
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse<List<TrackedPrDto>>.FailureResponse("User identity not found in token claims.", 401));
+
+        var response = await _trackedIssueService.GetTrackedPrsAsync(search, userId);
         return Ok(response);
     }
 
@@ -71,7 +92,10 @@ public class TrackedIssuesController : ControllerBase
         [FromQuery] string? severity = null, 
         [FromQuery] string? issueType = null)
     {
-        var response = await _trackedIssueService.GetTrackedIssuesForPrAsync(prNumber, search, status, severity, issueType);
+        if (!TryGetUserId(out var userId))
+            return Unauthorized(ApiResponse<List<TrackedIssueDto>>.FailureResponse("User identity not found in token claims.", 401));
+
+        var response = await _trackedIssueService.GetTrackedIssuesForPrAsync(prNumber, search, status, severity, issueType, userId);
         return Ok(response);
     }
 
@@ -79,6 +103,19 @@ public class TrackedIssuesController : ControllerBase
     public async Task<ActionResult<ApiResponse<TrackedIssueDto>>> UpdateTrackedIssueStatus(System.Guid id, [FromBody] UpdateTrackedIssueStatusDto request)
     {
         var response = await _trackedIssueService.UpdateTrackedIssueStatusAsync(id, request);
+        if (!response.Success)
+        {
+            if (response.StatusCode == 404) return NotFound(response);
+            return BadRequest(response);
+        }
+        return Ok(response);
+    }
+
+    [HttpPatch("issues/{issueId:guid}/toggle-ignore")]
+    [HttpPost("issues/{issueId:guid}/toggle-ignore")]
+    public async Task<ActionResult<ApiResponse<bool>>> ToggleIssueIgnore(Guid issueId)
+    {
+        var response = await _trackedIssueService.ToggleIssueIgnoreAsync(issueId);
         if (!response.Success)
         {
             if (response.StatusCode == 404) return NotFound(response);

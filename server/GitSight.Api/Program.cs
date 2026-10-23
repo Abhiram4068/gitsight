@@ -2,6 +2,7 @@ using System.Text;
 using FluentValidation;
 using GitSight.Api.Middleware;
 using GitSight.Application.Common.Interfaces;
+using GitSight.Application.Configurations;
 using GitSight.Application.Services;
 using GitSight.Application.Validations;
 using GitSight.Infrastructure.Persistence;
@@ -33,7 +34,7 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 
-// Configure EF Core with SQL Server 2022
+// Configure EF Core with PostgreSQL (Neon)
 builder.Services.AddDbContext<GitSightDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -42,19 +43,21 @@ builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<Gi
 // Register HttpClients & Infrastructure Services
 builder.Services.AddHttpClient<IGitHubAuthService, GitHubAuthService>();
 builder.Services.AddHttpClient<IGitHubService, GitHubService>();
-builder.Services.AddHttpClient<IAiReviewService, GeminiService>(client => 
+builder.Services.AddHttpClient<IAiReviewService, PythonReviewService>(client => 
 {
-    client.Timeout = TimeSpan.FromMinutes(5);
+    client.Timeout = TimeSpan.FromMinutes(3);
 });
 
 // Register Repositories (Infrastructure)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPullRequestRepository, PullRequestRepository>();
 builder.Services.AddScoped<ITrackedIssueRepository, TrackedIssueRepository>();
-builder.Services.AddScoped<IWebhookRepository, WebhookRepository>();
+builder.Services.AddScoped<IRuleRepository, RuleRepository>();
 
 
 // Register Application & Infrastructure Services
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
+builder.Services.AddScoped<IEmailService, MailKitEmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRepositoryService, RepositoryService>();
 builder.Services.AddScoped<IPullRequestService, PullRequestService>();
@@ -62,6 +65,9 @@ builder.Services.AddScoped<IWebhookService, WebhookService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITrackedIssueService, TrackedIssueService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IRuleService, RuleService>();
+builder.Services.AddScoped<IWebhookService, WebhookService>();
 
 // Register FluentValidation Validators
 builder.Services.AddValidatorsFromAssemblyContaining<MergePrRequestValidator>();
@@ -87,14 +93,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 // CORS for Vite React Client
+var frontendUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClient", policy =>
     {
-        var frontendUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
-        var allowedOrigins = frontendUrl.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(o => o.Trim()).ToArray();
-        
-        policy.WithOrigins(allowedOrigins)
+        policy.WithOrigins(frontendUrl)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();

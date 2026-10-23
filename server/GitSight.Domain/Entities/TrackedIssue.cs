@@ -11,6 +11,10 @@ public class TrackedIssue
     public int PullRequestNumber { get; set; }
     public Guid AiReviewIssueId { get; set; }
 
+    // User who tracked this issue
+    public Guid TrackedByUserId { get; set; }
+    public User? TrackedByUser { get; set; }
+
     // Issue Context copied from AiReviewIssue
     public string FilePath { get; set; } = string.Empty;
     public int StartLine { get; set; }

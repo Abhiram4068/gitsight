@@ -18,21 +18,25 @@ public class TrackedIssueService : ITrackedIssueService
         _trackedIssueRepository = trackedIssueRepository;
     }
 
-    public async Task<ApiResponse<bool>> TrackIssuesAsync(TrackIssuesRequestDto request)
+    public async Task<ApiResponse<bool>> TrackIssuesAsync(TrackIssuesRequestDto request, Guid userId)
     {
         // Get all AI issues for the given session that are NOT ignored via repository
         var validIssuesToTrack = await _trackedIssueRepository.GetValidIssuesToTrackAsync(request.SessionId);
 
+        // Validation: Ensure only non-ignored issues are tracked
+        validIssuesToTrack = validIssuesToTrack.Where(issue => !issue.IsIgnored).ToList();
+
         if (!validIssuesToTrack.Any())
         {
-            return ApiResponse<bool>.SuccessResponse(false, "No valid issues to track.");
+            return ApiResponse<bool>.SuccessResponse(false, "No valid (non-ignored) issues to track.");
         }
 
-        // Map valid issues to TrackedIssues
+        // Map valid issues to TrackedIssues, binding to the current user
         var trackedIssues = validIssuesToTrack.Select(issue => new TrackedIssue
         {
             PullRequestNumber = request.PullRequestNumber,
             AiReviewIssueId = issue.Id,
+            TrackedByUserId = userId,
             FilePath = issue.FilePath,
             StartLine = issue.StartLine,
             EndLine = issue.EndLine,
@@ -47,8 +51,8 @@ public class TrackedIssueService : ITrackedIssueService
             UpdatedAt = System.DateTime.UtcNow
         }).ToList();
 
-        // Check if any of these are already tracked to avoid duplicates
-        var existingTrackedIssueIds = await _trackedIssueRepository.GetExistingTrackedIssueIdsAsync(request.PullRequestNumber);
+        // Check if any of these are already tracked (for this user) to avoid duplicates
+        var existingTrackedIssueIds = await _trackedIssueRepository.GetExistingTrackedIssueIdsAsync(request.PullRequestNumber, userId);
 
         var newIssues = trackedIssues.Where(t => !existingTrackedIssueIds.Contains(t.AiReviewIssueId)).ToList();
 
@@ -63,17 +67,17 @@ public class TrackedIssueService : ITrackedIssueService
         return ApiResponse<bool>.SuccessResponse(true, "Issues tracked successfully.");
     }
 
-    public async Task<ApiResponse<bool>> UntrackIssuesAsync(TrackIssuesRequestDto request)
+    public async Task<ApiResponse<bool>> UntrackIssuesAsync(TrackIssuesRequestDto request, Guid userId)
     {
-        await _trackedIssueRepository.RemoveTrackedIssuesAsync(request.PullRequestNumber);
+        await _trackedIssueRepository.RemoveTrackedIssuesAsync(request.PullRequestNumber, userId);
         await _trackedIssueRepository.UnmarkSessionAsTrackedAsync(request.SessionId);
         
         return ApiResponse<bool>.SuccessResponse(true, "Issues untracked successfully.");
     }
 
-    public async Task<ApiResponse<List<TrackedPrDto>>> GetTrackedPrsAsync(string? search)
+    public async Task<ApiResponse<List<TrackedPrDto>>> GetTrackedPrsAsync(string? search, Guid userId)
     {
-        var sessions = await _trackedIssueRepository.GetTrackedPrsAsync(search);
+        var sessions = await _trackedIssueRepository.GetTrackedPrsAsync(search, userId);
         var prs = sessions.Select(s => new TrackedPrDto
         {
             Owner = s.Owner,
@@ -85,9 +89,9 @@ public class TrackedIssueService : ITrackedIssueService
         return ApiResponse<List<TrackedPrDto>>.SuccessResponse(prs, "Tracked PRs fetched successfully.");
     }
 
-    public async Task<ApiResponse<List<TrackedIssueDto>>> GetTrackedIssuesForPrAsync(int prNumber, string? search, string? status, string? severity, string? issueType)
+    public async Task<ApiResponse<List<TrackedIssueDto>>> GetTrackedIssuesForPrAsync(int prNumber, string? search, string? status, string? severity, string? issueType, Guid userId)
     {
-        var issues = await _trackedIssueRepository.GetTrackedIssuesForPrAsync(prNumber, search, status, severity, issueType);
+        var issues = await _trackedIssueRepository.GetTrackedIssuesForPrAsync(prNumber, search, status, severity, issueType, userId);
         var dtos = issues.Select(i => new TrackedIssueDto
         {
             Id = i.Id,
@@ -144,5 +148,17 @@ public class TrackedIssueService : ITrackedIssueService
         };
 
         return ApiResponse<TrackedIssueDto>.SuccessResponse(dto, "Issue status updated successfully.");
+    }
+
+    public async Task<ApiResponse<bool>> ToggleIssueIgnoreAsync(Guid issueId)
+    {
+        var result = await _trackedIssueRepository.ToggleIssueIgnoreAsync(issueId);
+        if (result == null)
+        {
+            return ApiResponse<bool>.FailureResponse("AI Review Issue not found.", 404);
+        }
+
+        var message = result.Value ? "Issue ignored successfully." : "Issue restored successfully.";
+        return ApiResponse<bool>.SuccessResponse(result.Value, message);
     }
 }
