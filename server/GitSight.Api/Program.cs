@@ -66,6 +66,7 @@ builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddScoped<ITrackedIssueService, TrackedIssueService>();
 builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
 builder.Services.AddScoped<IRuleService, RuleService>();
+builder.Services.AddScoped<IWebhookService, WebhookService>();
 
 // Register FluentValidation Validators
 builder.Services.AddValidatorsFromAssemblyContaining<MergePrRequestValidator>();
