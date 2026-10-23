@@ -6,11 +6,12 @@ namespace GitSight.Application.Common.Interfaces;
 public interface IApplicationDbContext
 {
     DbSet<User> Users { get; }
-    DbSet<Repository> Repositories { get; }
-    DbSet<PullRequest> PullRequests { get; }
     DbSet<ReviewComment> ReviewComments { get; }
     DbSet<AiReviewSession> AiReviewSessions { get; }
     DbSet<AiReviewIssue> AiReviewIssues { get; }
     DbSet<PrInsight> PrInsights { get; }
+    DbSet<TrackedIssue> TrackedIssues { get; }
+    DbSet<Rule> Rules { get; }
+    DbSet<RuleConfig> RuleConfigs { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

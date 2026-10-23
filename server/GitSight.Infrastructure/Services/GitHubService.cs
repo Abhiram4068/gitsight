@@ -150,6 +150,60 @@ public class GitHubService : IGitHubService
         return response.IsSuccessStatusCode;
     }
 
+    public async Task<bool> PostSinglePullRequestCommentAsync(
+        string accessToken,
+        string owner,
+        string repo,
+        int prNumber,
+        string filePath,
+        int line,
+        string comment,
+        string? suggestedCode = null)
+    {
+        var githubPr = await GetPullRequestStatsAsync(accessToken, owner, repo, prNumber);
+        var headSha = githubPr.HeadSha;
+
+        var commentBody = string.IsNullOrEmpty(suggestedCode)
+            ? comment
+            : $"{comment}\n\n```suggestion\n{suggestedCode}\n```";
+
+        // 1. Try to post as an inline PR review comment directly on the PR diff line
+        using var diffCommentRequest = new HttpRequestMessage(HttpMethod.Post, $"https://api.github.com/repos/{owner}/{repo}/pulls/{prNumber}/comments");
+        diffCommentRequest.Headers.UserAgent.Add(new ProductInfoHeaderValue("GitSight-Agent", "1.0"));
+        diffCommentRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        diffCommentRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+
+        var diffPayload = new
+        {
+            commit_id = headSha,
+            path = filePath,
+            line = line,
+            side = "RIGHT",
+            body = commentBody
+        };
+
+        diffCommentRequest.Content = new StringContent(JsonSerializer.Serialize(diffPayload), Encoding.UTF8, "application/json");
+
+        var diffResponse = await _httpClient.SendAsync(diffCommentRequest);
+        if (diffResponse.IsSuccessStatusCode)
+        {
+            return true;
+        }
+
+        // 2. If the line is not part of the active commit diff hunks (HTTP 422), fallback to PR issue comment
+        var fallbackBody = $"### 🤖 GitSight AI Review: `{filePath}:{line}`\n\n{commentBody}";
+        using var issueCommentRequest = new HttpRequestMessage(HttpMethod.Post, $"https://api.github.com/repos/{owner}/{repo}/issues/{prNumber}/comments");
+        issueCommentRequest.Headers.UserAgent.Add(new ProductInfoHeaderValue("GitSight-Agent", "1.0"));
+        issueCommentRequest.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
+        issueCommentRequest.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+
+        var fallbackPayload = new { body = fallbackBody };
+        issueCommentRequest.Content = new StringContent(JsonSerializer.Serialize(fallbackPayload), Encoding.UTF8, "application/json");
+
+        var fallbackResponse = await _httpClient.SendAsync(issueCommentRequest);
+        return fallbackResponse.IsSuccessStatusCode;
+    }
+
     public async Task<bool> MergePullRequestAsync(
         string accessToken,
         string owner,

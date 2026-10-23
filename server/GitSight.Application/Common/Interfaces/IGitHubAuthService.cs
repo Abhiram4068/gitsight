@@ -4,6 +4,6 @@ namespace GitSight.Application.Common.Interfaces;
 
 public interface IGitHubAuthService
 {
-    string GetAuthorizationUrl(string state);
+    string GetAuthorizationUrl(string state, string? prompt = "select_account");
     Task<GitHubUserDto> ExchangeCodeForUserAsync(string code);
 }

@@ -2,6 +2,7 @@ using System.Text;
 using FluentValidation;
 using GitSight.Api.Middleware;
 using GitSight.Application.Common.Interfaces;
+using GitSight.Application.Configurations;
 using GitSight.Application.Services;
 using GitSight.Application.Validations;
 using GitSight.Infrastructure.Persistence;
@@ -42,23 +43,31 @@ builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<Gi
 // Register HttpClients & Infrastructure Services
 builder.Services.AddHttpClient<IGitHubAuthService, GitHubAuthService>();
 builder.Services.AddHttpClient<IGitHubService, GitHubService>();
-builder.Services.AddHttpClient<IAiReviewService, GeminiService>(client => 
+builder.Services.AddHttpClient<IAiReviewService, PythonReviewService>(client => 
 {
-    client.Timeout = TimeSpan.FromMinutes(5);
+    client.Timeout = TimeSpan.FromMinutes(3);
 });
 
 // Register Repositories (Infrastructure)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPullRequestRepository, PullRequestRepository>();
-builder.Services.AddScoped<IWebhookRepository, WebhookRepository>();
+builder.Services.AddScoped<ITrackedIssueRepository, TrackedIssueRepository>();
+builder.Services.AddScoped<IRuleRepository, RuleRepository>();
+
 
 // Register Application & Infrastructure Services
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection("SmtpSettings"));
+builder.Services.AddScoped<IEmailService, MailKitEmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRepositoryService, RepositoryService>();
 builder.Services.AddScoped<IPullRequestService, PullRequestService>();
 builder.Services.AddScoped<IWebhookService, WebhookService>();
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
+builder.Services.AddScoped<ITrackedIssueService, TrackedIssueService>();
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<IRuleService, RuleService>();
+builder.Services.AddScoped<IWebhookService, WebhookService>();
 
 // Register FluentValidation Validators
 builder.Services.AddValidatorsFromAssemblyContaining<MergePrRequestValidator>();

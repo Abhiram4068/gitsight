@@ -17,11 +17,6 @@ public class PullRequestRepository : IPullRequestRepository
         _context = context;
     }
 
-    public async Task<Repository?> GetRepositoryByIdAsync(Guid id)
-    {
-        return await _context.Repositories.FirstOrDefaultAsync(r => r.Id == id);
-    }
-
     public async Task<List<PrInsight>> GetInsightsByRepoAsync(string repositoryFullName)
     {
         return await _context.PrInsights
@@ -56,7 +51,9 @@ public class PullRequestRepository : IPullRequestRepository
         {
             query = query.Include(s => s.Issues);
         }
-        return await query.FirstOrDefaultAsync(s => s.Owner == owner && s.Repo == repo && s.PrNumber == prNumber);
+        return await query
+            .OrderByDescending(s => s.CreatedAt)
+            .FirstOrDefaultAsync(s => s.Owner == owner && s.Repo == repo && s.PrNumber == prNumber);
     }
 
     public Task AddAiReviewSessionAsync(AiReviewSession session)
