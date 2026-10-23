@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace GitSight.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialPostgres : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -16,8 +16,8 @@ namespace GitSight.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Owner = table.Column<string>(type: "text", nullable: false),
-                    Repo = table.Column<string>(type: "text", nullable: false),
+                    Owner = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
+                    Repo = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     PrNumber = table.Column<int>(type: "integer", nullable: false),
                     FinalSuggestionsCount = table.Column<int>(type: "integer", nullable: false),
                     SecurityIssuesCount = table.Column<int>(type: "integer", nullable: false),
@@ -25,11 +25,13 @@ namespace GitSight.Infrastructure.Migrations
                     BreachesCount = table.Column<int>(type: "integer", nullable: false),
                     PerformanceIssuesCount = table.Column<int>(type: "integer", nullable: false),
                     CodeSmellsCount = table.Column<int>(type: "integer", nullable: false),
-                    TestCoverageImpact = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
-                    CodeComplexity = table.Column<string>(type: "text", nullable: false),
-                    OverallConfidenceScore = table.Column<decimal>(type: "numeric(18,2)", nullable: false),
+                    TestCoverageImpact = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    CodeComplexity = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    OverallConfidenceScore = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     ExecutiveSummary = table.Column<string>(type: "text", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    IsTracked = table.Column<bool>(type: "boolean", nullable: false),
+                    IsWebhook = table.Column<bool>(type: "boolean", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -43,10 +45,10 @@ namespace GitSight.Infrastructure.Migrations
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     RepositoryFullName = table.Column<string>(type: "character varying(400)", maxLength: 400, nullable: false),
                     PrNumber = table.Column<int>(type: "integer", nullable: false),
-                    Status = table.Column<string>(type: "text", nullable: false),
-                    Priority = table.Column<string>(type: "text", nullable: false),
+                    Status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    Priority = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     AiSummary = table.Column<string>(type: "text", nullable: true),
-                    RiskLevel = table.Column<string>(type: "text", nullable: true),
+                    RiskLevel = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: true),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
@@ -56,16 +58,33 @@ namespace GitSight.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Rules",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    DisplayName = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    Description = table.Column<string>(type: "character varying(1000)", maxLength: 1000, nullable: false),
+                    Prompt = table.Column<string>(type: "text", nullable: false),
+                    Status = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Rules", x => x.Id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
                     GitHubId = table.Column<long>(type: "bigint", nullable: false),
                     Username = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
-                    Email = table.Column<string>(type: "text", nullable: true),
-                    AvatarUrl = table.Column<string>(type: "text", nullable: true),
+                    Email = table.Column<string>(type: "character varying(255)", maxLength: 255, nullable: true),
+                    AvatarUrl = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: true),
                     AccessToken = table.Column<string>(type: "text", nullable: false),
                     Role = table.Column<int>(type: "integer", nullable: false),
+                    IsEmailAllowed = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
@@ -89,6 +108,8 @@ namespace GitSight.Infrastructure.Migrations
                     Severity = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
                     SuggestedRemovedCode = table.Column<string>(type: "text", nullable: true),
                     SuggestedAddedCode = table.Column<string>(type: "text", nullable: true),
+                    IsIgnored = table.Column<bool>(type: "boolean", nullable: false),
+                    IsCommented = table.Column<bool>(type: "boolean", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -130,60 +151,57 @@ namespace GitSight.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Repositories",
+                name: "RuleConfigs",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    GitHubRepoId = table.Column<long>(type: "bigint", nullable: false),
-                    Name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
-                    FullName = table.Column<string>(type: "character varying(400)", maxLength: 400, nullable: false),
-                    Owner = table.Column<string>(type: "character varying(150)", maxLength: 150, nullable: false),
-                    IsPrivate = table.Column<bool>(type: "boolean", nullable: false),
-                    IsTracked = table.Column<bool>(type: "boolean", nullable: false),
-                    WebhookId = table.Column<long>(type: "bigint", nullable: true),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    RepositoryId = table.Column<Guid>(type: "uuid", nullable: true),
+                    RepositoryFullName = table.Column<string>(type: "character varying(400)", maxLength: 400, nullable: false),
+                    RuleId = table.Column<Guid>(type: "uuid", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_Repositories", x => x.Id);
+                    table.PrimaryKey("PK_RuleConfigs", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_Repositories_Users_UserId",
-                        column: x => x.UserId,
-                        principalTable: "Users",
+                        name: "FK_RuleConfigs_Rules_RuleId",
+                        column: x => x.RuleId,
+                        principalTable: "Rules",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
-                name: "PullRequests",
+                name: "TrackedIssues",
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    PrNumber = table.Column<int>(type: "integer", nullable: false),
-                    Title = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
-                    Description = table.Column<string>(type: "text", nullable: true),
-                    HeadSha = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
-                    BaseBranch = table.Column<string>(type: "text", nullable: false),
-                    HeadBranch = table.Column<string>(type: "text", nullable: false),
-                    State = table.Column<int>(type: "integer", nullable: false),
-                    DiffContent = table.Column<string>(type: "text", nullable: true),
-                    AiSummary = table.Column<string>(type: "text", nullable: true),
-                    RiskLevel = table.Column<string>(type: "text", nullable: true),
-                    RepositoryId = table.Column<Guid>(type: "uuid", nullable: false),
-                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                    PullRequestNumber = table.Column<int>(type: "integer", nullable: false),
+                    AiReviewIssueId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TrackedByUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    FilePath = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    StartLine = table.Column<int>(type: "integer", nullable: false),
+                    EndLine = table.Column<int>(type: "integer", nullable: false),
+                    Author = table.Column<string>(type: "text", nullable: false),
+                    Comment = table.Column<string>(type: "text", nullable: false),
+                    IssueType = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    Severity = table.Column<string>(type: "character varying(50)", maxLength: 50, nullable: false),
+                    SuggestedRemovedCode = table.Column<string>(type: "text", nullable: true),
+                    SuggestedAddedCode = table.Column<string>(type: "text", nullable: true),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    OpenedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_PullRequests", x => x.Id);
+                    table.PrimaryKey("PK_TrackedIssues", x => x.Id);
                     table.ForeignKey(
-                        name: "FK_PullRequests_Repositories_RepositoryId",
-                        column: x => x.RepositoryId,
-                        principalTable: "Repositories",
-                        principalColumn: "Id",
-                        onDelete: ReferentialAction.Cascade);
+                        name: "FK_TrackedIssues_Users_TrackedByUserId",
+                        column: x => x.TrackedByUserId,
+                        principalTable: "Users",
+                        principalColumn: "Id");
                 });
 
             migrationBuilder.CreateIndex(
@@ -198,25 +216,19 @@ namespace GitSight.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_PullRequests_RepositoryId_PrNumber",
-                table: "PullRequests",
-                columns: new[] { "RepositoryId", "PrNumber" },
-                unique: true);
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Repositories_GitHubRepoId",
-                table: "Repositories",
-                column: "GitHubRepoId");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_Repositories_UserId",
-                table: "Repositories",
-                column: "UserId");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_ReviewComments_PrInsightId",
                 table: "ReviewComments",
                 column: "PrInsightId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_RuleConfigs_RuleId",
+                table: "RuleConfigs",
+                column: "RuleId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_TrackedIssues_TrackedByUserId",
+                table: "TrackedIssues",
+                column: "TrackedByUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_Users_GitHubId",
@@ -232,19 +244,22 @@ namespace GitSight.Infrastructure.Migrations
                 name: "AiReviewIssues");
 
             migrationBuilder.DropTable(
-                name: "PullRequests");
+                name: "ReviewComments");
 
             migrationBuilder.DropTable(
-                name: "ReviewComments");
+                name: "RuleConfigs");
+
+            migrationBuilder.DropTable(
+                name: "TrackedIssues");
 
             migrationBuilder.DropTable(
                 name: "AiReviewSessions");
 
             migrationBuilder.DropTable(
-                name: "Repositories");
+                name: "PrInsights");
 
             migrationBuilder.DropTable(
-                name: "PrInsights");
+                name: "Rules");
 
             migrationBuilder.DropTable(
                 name: "Users");
