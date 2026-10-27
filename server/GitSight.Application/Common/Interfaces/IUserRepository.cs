@@ -6,6 +6,9 @@ public interface IUserRepository
 {
     Task<User?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
     Task<User?> GetByGitHubIdAsync(long gitHubId, CancellationToken cancellationToken = default);
+    Task<User?> GetActiveUserForWebhookAsync(string owner, CancellationToken cancellationToken = default);
+    Task<User?> GetByUsernameWithAccessTokenAsync(string username, CancellationToken cancellationToken = default);
+    Task<User?> GetFirstActiveUserWithAccessTokenAsync(CancellationToken cancellationToken = default);
     Task<bool> IsEmailAllowedAsync(string email, CancellationToken cancellationToken = default);
     Task AddAsync(User user, CancellationToken cancellationToken = default);
     Task UpdateAsync(User user, CancellationToken cancellationToken = default);
