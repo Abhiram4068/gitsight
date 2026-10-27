@@ -34,24 +34,15 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 
-// Configure EF Core with PostgreSQL (Neon DB) or SQL Server
+// Configure EF Core with PostgreSQL (Neon DB)
 var defaultConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? builder.Configuration["DATABASE_URL"] 
     ?? string.Empty;
 
+var pgConnectionString = ConvertPostgresUrlToConnectionString(defaultConnectionString);
+
 builder.Services.AddDbContext<GitSightDbContext>(options =>
-{
-    if (defaultConnectionString.StartsWith("postgres", StringComparison.OrdinalIgnoreCase) ||
-        defaultConnectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase))
-    {
-        var pgConnectionString = ConvertPostgresUrlToConnectionString(defaultConnectionString);
-        options.UseNpgsql(pgConnectionString);
-    }
-    else
-    {
-        options.UseSqlServer(defaultConnectionString);
-    }
-});
+    options.UseNpgsql(pgConnectionString));
 
 builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<GitSightDbContext>());
 
