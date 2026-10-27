@@ -3,7 +3,7 @@ import axiosClient, { BASE_URL } from './axiosClient';
 export const authApi = {
   getToken: () => localStorage.getItem('gitsight_token'),
   getUsername: () => localStorage.getItem('gitsight_username'),
-
+ 
   loginWithGitHub: (prompt = 'select_account') => {
     const url = prompt
       ? `${BASE_URL}/api/auth/login?prompt=${encodeURIComponent(prompt)}`
