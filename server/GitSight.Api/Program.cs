@@ -34,9 +34,24 @@ builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 builder.Services.AddHttpContextAccessor();
 
-// Configure EF Core with PostgreSQL (Neon)
+// Configure EF Core with PostgreSQL (Neon DB) or SQL Server
+var defaultConnectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+    ?? builder.Configuration["DATABASE_URL"] 
+    ?? string.Empty;
+
 builder.Services.AddDbContext<GitSightDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    if (defaultConnectionString.StartsWith("postgres", StringComparison.OrdinalIgnoreCase) ||
+        defaultConnectionString.Contains("Host=", StringComparison.OrdinalIgnoreCase))
+    {
+        var pgConnectionString = ConvertPostgresUrlToConnectionString(defaultConnectionString);
+        options.UseNpgsql(pgConnectionString);
+    }
+    else
+    {
+        options.UseSqlServer(defaultConnectionString);
+    }
+});
 
 builder.Services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<GitSightDbContext>());
 
@@ -92,14 +107,23 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// CORS for Vite React Client
-var frontendUrl = builder.Configuration["Frontend:BaseUrl"] ?? "http://localhost:5173";
+// CORS for Vite React Client (Local & Vercel)
+var allowedOrigins = new List<string>
+{
+    "http://localhost:5173",
+    "https://usegitsight.vercel.app"
+};
+var frontendBaseUrl = builder.Configuration["Frontend:BaseUrl"];
+if (!string.IsNullOrWhiteSpace(frontendBaseUrl))
+{
+    allowedOrigins.Add(frontendBaseUrl.TrimEnd('/'));
+}
 
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowClient", policy =>
     {
-        policy.WithOrigins(frontendUrl)
+        policy.WithOrigins(allowedOrigins.Distinct().ToArray())
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -107,6 +131,21 @@ builder.Services.AddCors(options =>
 });
 
 var app = builder.Build();
+
+// Auto-initialize schema if using PostgreSQL (Neon DB)
+try
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<GitSightDbContext>();
+    if (dbContext.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true)
+    {
+        dbContext.Database.EnsureCreated();
+    }
+}
+catch (Exception ex)
+{
+    Log.Error(ex, "Failed to verify or initialize database schema.");
+}
 
 // Custom Global Exception Handling Middleware
 app.UseMiddleware<ExceptionHandlingMiddleware>();
@@ -123,3 +162,23 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+static string ConvertPostgresUrlToConnectionString(string urlOrConnStr)
+{
+    if (string.IsNullOrWhiteSpace(urlOrConnStr)) return urlOrConnStr;
+
+    if (urlOrConnStr.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) ||
+        urlOrConnStr.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
+    {
+        var uri = new Uri(urlOrConnStr);
+        var userInfo = uri.UserInfo.Split(':');
+        var username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : "";
+        var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : "";
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        var database = uri.AbsolutePath.TrimStart('/');
+
+        return $"Host={uri.Host};Port={port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true;";
+    }
+
+    return urlOrConnStr;
+}
