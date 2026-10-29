@@ -202,7 +202,7 @@ export default function Header({ user, loading, onLogout, onMenuToggle, sidebarO
             </button>
 
             {showLogoutConfirm && (
-              <div className="absolute right-0 mt-2 w-56 bg-white shadow-xl border border-gray-200 py-3 px-3.5 z-50 animate-in fade-in zoom-in-95 duration-100 rounded-md">
+              <div className="absolute right-0 mt-2 w-56 bg-white shadow-xl border border-gray-200 py-3 px-3.5 z-50 animate-in fade-in zoom-in-95 duration-100 ">
                 <p className="text-xs font-medium text-gray-800 mb-2.5 leading-relaxed">
                   Are you sure you want to log out?
                 </p>
