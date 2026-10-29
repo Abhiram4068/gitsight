@@ -125,11 +125,8 @@ export default function PrAiInsights() {
   const issueIdParam = searchParams.get("issue");
   const isFromTracked = searchParams.get("from") === "tracked";
   const isPrTracked = Boolean(
-    prStats?.isTracked ||
-    stats?.isTracked ||
-    insights?.isTracked ||
-    globalInsights?.isTracked ||
-    isFromTracked
+    isFromTracked ||
+    (insights ? Boolean(insights.isTracked) : Boolean(globalInsights?.isTracked))
   );
 
   const modalConfig = {
