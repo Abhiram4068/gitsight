@@ -30,6 +30,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <NavLink
             to="/"
             end
+            title="Home"
             className={({ isActive }) =>
               `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
                 isActive
@@ -45,6 +46,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <hr className="border-gray-200" />
           <NavLink
             to="/repositories"
+            title="Repositories"
             className={({ isActive }) =>
               `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
                 isActive
@@ -60,6 +62,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <hr className="border-gray-200" />
           <NavLink
             to="/pull-requests"
+            title="Pull Requests"
             className={({ isActive }) =>
               `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
                 isActive
@@ -74,6 +77,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <hr className="border-gray-200" />
           <NavLink
             to="/tracked-issues"
+            title="Tracked Issues"
             className={({ isActive }) =>
               `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
                 isActive
@@ -88,6 +92,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <hr className="border-gray-200" />
           {/* <NavLink
             to="/analytics"
+            title="Analytics"
             className={({ isActive }) =>
               `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
                 isActive
@@ -102,6 +107,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <hr className="border-gray-200" />
           <NavLink
             to="/webhooks"
+            title="Webhooks"
             className={({ isActive }) =>
               `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
                 isActive
@@ -116,6 +122,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <hr className="border-gray-200" />       
           <NavLink
             to="/review-rules"
+            title="Configure Rules"
             className={({ isActive }) =>
               `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
                 isActive
@@ -131,6 +138,7 @@ export default function Sidebar({ isOpen, onClose }) {
           {/*
           <NavLink
             to="/pipelines"
+            title="Pipelines"
             className={({ isActive }) =>
               `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
                 isActive
@@ -147,6 +155,7 @@ export default function Sidebar({ isOpen, onClose }) {
           <hr className="border-gray-200" />
           <NavLink
             to="/settings"
+            title="Settings"
             className={({ isActive }) =>
               `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
                 isActive
@@ -162,6 +171,7 @@ export default function Sidebar({ isOpen, onClose }) {
           
           <NavLink
             to="/notifications"
+            title="Notifications"
             className={({ isActive }) =>
               `flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors ${
                 isActive
@@ -179,6 +189,7 @@ export default function Sidebar({ isOpen, onClose }) {
             href="https://github.com/settings/profile"
             target="_blank"
             rel="noopener noreferrer"
+            title="GitHub Profile"
             className="flex items-center space-x-3 px-6 py-2.5 text-xs font-medium transition-colors text-gray-600 hover:bg-gray-200 hover:text-gray-900"
           >
             <i className="fa-brands fa-github w-4 text-center"></i>{" "}
