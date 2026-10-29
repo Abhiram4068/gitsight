@@ -12,4 +12,5 @@ public interface IGitHubService
     Task<int> GetOpenPrCountAsync(string accessToken, string owner, string repo);
     Task<PullRequestDto> GetPullRequestStatsAsync(string accessToken, string owner, string repo, int prNumber);
     Task<List<PullRequestFileDto>> GetPullRequestFilesAsync(string accessToken, string owner, string repo, int prNumber);
+    Task<bool> PostSinglePullRequestCommentAsync(string accessToken, string owner, string repo, int prNumber, string filePath, int line, string comment, string? suggestedCode = null);
 }

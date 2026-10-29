@@ -2,7 +2,7 @@ import React from "react";
 
 export default function PrDetailRightSidebar({ files, setFiles }) {
   return (
-    <aside className="w-96 border-l border-gray-200 bg-gray-200 p-4 space-y-4 overflow-hidden flex flex-col shrink-0">
+    <aside className="hidden lg:flex w-72 xl:w-80 2xl:w-96 border-l border-gray-200 bg-gray-100 p-3 lg:p-4 space-y-4 overflow-hidden flex-col shrink-0">
       {/* Files Changed List */}
       <div className="border border-gray-200 rounded-md bg-white shadow-sm flex flex-col flex-1 overflow-hidden min-h-0">
         <div className="px-3 py-2 border-b border-gray-100 bg-gray-50 rounded-t-md font-bold text-xs text-gray-700 shrink-0">

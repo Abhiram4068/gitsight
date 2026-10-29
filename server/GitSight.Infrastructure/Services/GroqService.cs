@@ -21,7 +21,7 @@ public class GroqService : IAiReviewService
         _model = config["Groq:Model"] ?? "qwen/qwen3.8-27b"; 
     }
 
-    public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null)
+    public async Task<GeminiReviewResultDto> AnalyzeDiffAsync(string diffText, string prTitle, string? prDescription = null, List<string>? customRules = null)
     {
         if (string.IsNullOrWhiteSpace(_apiKey))
         {

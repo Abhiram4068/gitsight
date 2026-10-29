@@ -22,5 +22,13 @@ public record UserProfileDto(
     string? Email,
     string? AvatarUrl,
     string Role,
-    DateTime CreatedAt
+    DateTime CreatedAt,
+    bool IsRuleSet = false,
+    bool IsEmailAllowed = true
+);
+
+public record UserToggleEmailDto(
+    Guid Id,
+    string Message,
+    bool IsEmailAllowed
 );
