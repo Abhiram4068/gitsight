@@ -21,7 +21,10 @@ export const authApi = {
       window.location.href = `${BASE_URL}/api/auth/login`;
     }
   }, 
+     
 
+
+  
   logout: () => {
     localStorage.removeItem('gitsight_token');
     localStorage.removeItem('gitsight_username');
