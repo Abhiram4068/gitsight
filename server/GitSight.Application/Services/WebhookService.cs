@@ -4,6 +4,7 @@ using System.Text.Json;
 using GitSight.Application.Common.Interfaces;
 using GitSight.Application.DTOs;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
 namespace GitSight.Application.Services;
@@ -14,17 +15,20 @@ public class WebhookService : IWebhookService
     private readonly IPullRequestService _pullRequestService;
     private readonly IConfiguration _configuration;
     private readonly ILogger<WebhookService> _logger;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public WebhookService(
         IUserRepository userRepository,
         IPullRequestService pullRequestService,
         IConfiguration configuration,
-        ILogger<WebhookService> logger)
+        ILogger<WebhookService> logger,
+        IServiceScopeFactory scopeFactory)
     {
         _userRepository = userRepository;
         _pullRequestService = pullRequestService;
         _configuration = configuration;
         _logger = logger;
+        _scopeFactory = scopeFactory;
     }
 
     public GitHubWebhookValidationResult ValidateWebhookRequest(
@@ -202,25 +206,47 @@ public class WebhookService : IWebhookService
                 return WebhookResultDto.Skipped("Repository not actively tracked.", "Repository skipped.");
             }
 
-            // Delegate PR analysis and email notifications to the service layer
-            var session = await _pullRequestService.AnalyzePullRequestAsync(
-                user.AccessToken,
-                owner,
-                repoName,
-                prNumber,
-                user.Email,
-                isWebhook: true);
+            // Capture required values for background processing
+            var accessToken = user.AccessToken;
+            var userEmail = user.Email;
+
+            // Trigger AI PR analysis asynchronously in background so GitHub gets an immediate 200 OK.
+            // GitHub webhooks have a strict 10-second timeout. AI analysis takes 1-2 minutes.
+            _ = Task.Run(async () =>
+            {
+                using var scope = _scopeFactory.CreateScope();
+                var scopedLogger = scope.ServiceProvider.GetRequiredService<ILogger<WebhookService>>();
+                var scopedPrService = scope.ServiceProvider.GetRequiredService<IPullRequestService>();
+
+                try
+                {
+                    scopedLogger.LogInformation("Background AI review started for PR #{PrNumber} in {Owner}/{RepoName}", prNumber, owner, repoName);
+                    var session = await scopedPrService.AnalyzePullRequestAsync(
+                        accessToken,
+                        owner,
+                        repoName,
+                        prNumber,
+                        userEmail,
+                        isWebhook: true);
+                    scopedLogger.LogInformation("Background AI review completed for PR #{PrNumber} in {Owner}/{RepoName}. Executive summary generated with {Count} issues.",
+                        prNumber, owner, repoName, session.Issues?.Count ?? 0);
+                }
+                catch (Exception ex)
+                {
+                    scopedLogger.LogError(ex, "Background AI review failed for PR #{PrNumber} in {Owner}/{RepoName}", prNumber, owner, repoName);
+                }
+            });
 
             var responseData = new
             {
                 owner,
                 repo = repoName,
                 prNumber,
-                summary = session.ExecutiveSummary,
-                commentsGenerated = session.Issues.Count
+                status = "queued",
+                message = "PR analysis started in background."
             };
 
-            return WebhookResultDto.Success(responseData, "PR successfully reviewed by GitSight Agent.");
+            return WebhookResultDto.Success(responseData, "PR successfully received and queued for review.");
         }
     }
 }

@@ -19,6 +19,14 @@ public class WebhooksController : ControllerBase
         _logger = logger;
     }
 
+    [HttpGet]
+    [HttpGet("github")]
+    [HttpGet("health")]
+    public IActionResult HealthCheck()
+    {
+        return Ok(ApiResponse<string>.SuccessResponse("GitSight Webhook service is active and listening.", "Healthy", 200));
+    }
+
     [HttpPost]
     [HttpPost("github")]
     public async Task<IActionResult> HandleGitHubWebhook()
