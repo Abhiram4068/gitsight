@@ -70,13 +70,60 @@ public class GitHubAuthService : IGitHubAuthService
 
         // Get current user
         var user = await githubClient.User.Current();
+        var email = user.Email;
+
+        // If email is private on GitHub profile, fetch verified primary email from /user/emails
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            try
+            {
+                var emails = await githubClient.User.Email.GetAll();
+                email = emails.FirstOrDefault(e => e.Primary && e.Verified)?.Email
+                    ?? emails.FirstOrDefault(e => e.Primary)?.Email
+                    ?? emails.FirstOrDefault(e => e.Verified)?.Email
+                    ?? emails.FirstOrDefault()?.Email;
+            }
+            catch
+            {
+                // Fall back gracefully if email endpoint is inaccessible
+            }
+        }
 
         return new GitHubUserDto(
             user.Id,
             user.Login,
-            user.Email,
+            email,
             user.AvatarUrl,
             accessToken
         );
+    }
+
+    public async Task<string?> GetUserPrimaryEmailAsync(string accessToken)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken)) return null;
+
+        try
+        {
+            var githubClient = new GitHubClient(new Octokit.ProductHeaderValue("GitSight"))
+            {
+                Credentials = new Credentials(accessToken)
+            };
+
+            var user = await githubClient.User.Current();
+            if (!string.IsNullOrWhiteSpace(user?.Email))
+            {
+                return user.Email;
+            }
+
+            var emails = await githubClient.User.Email.GetAll();
+            return emails.FirstOrDefault(e => e.Primary && e.Verified)?.Email
+                ?? emails.FirstOrDefault(e => e.Primary)?.Email
+                ?? emails.FirstOrDefault(e => e.Verified)?.Email
+                ?? emails.FirstOrDefault()?.Email;
+        }
+        catch
+        {
+            return null;
+        }
     }
 }
