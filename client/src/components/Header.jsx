@@ -91,7 +91,7 @@ export default function Header({ user, loading, onLogout, onMenuToggle, sidebarO
 
         {/* Mail / Notification Settings Dropdown */}
         <div className="relative" ref={notificationRef}>
-          <button
+          {/* <button
             onClick={() => {
               setShowNotificationMenu((prev) => !prev);
               setShowLogoutConfirm(false);
@@ -100,7 +100,6 @@ export default function Header({ user, loading, onLogout, onMenuToggle, sidebarO
             className="flex items-center justify-center w-8 h-8 rounded-full text-white hover:bg-gray-800 transition-colors relative cursor-pointer"
           >
             <i className="fa-solid fa-envelope text-base"></i>
-            {/* Status indicator badge */}
             <span
               className={`absolute top-0 right-0 w-3.5 h-3.5 rounded-full ring-2 ring-gray-900 flex items-center justify-center text-[8px] text-white ${
                 allowEmailNotifications ? 'bg-emerald-500' : 'bg-red-500'
@@ -108,7 +107,7 @@ export default function Header({ user, loading, onLogout, onMenuToggle, sidebarO
             >
               <i className={`fa-solid ${allowEmailNotifications ? 'fa-check' : 'fa-xmark'}`}></i>
             </span>
-          </button>
+          </button> */}
 
           {showNotificationMenu && (
             <div className="absolute right-0 mt-2 w-72 max-w-[calc(100vw-2rem)] bg-white shadow-xl border border-gray-200 py-3.5 px-4 z-50 animate-in fade-in zoom-in-95 duration-100 rounded-md text-gray-800">
@@ -126,7 +125,6 @@ export default function Header({ user, loading, onLogout, onMenuToggle, sidebarO
                   Allow or block email notifications from this app
                 </label>
                 
-                {/* Toggle Switch */}
                 <button
                   id="email-toggle"
                   type="button"
