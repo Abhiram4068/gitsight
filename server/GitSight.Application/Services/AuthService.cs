@@ -67,6 +67,26 @@ public class AuthService : IAuthService
         var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
         if (user is null) return null;
 
+        // If email was not stored during OAuth (e.g. GitHub email was set to private), resolve it now via user's access token
+        if (string.IsNullOrWhiteSpace(user.Email) && !string.IsNullOrWhiteSpace(user.AccessToken))
+        {
+            try
+            {
+                var resolvedEmail = await _gitHubAuthService.GetUserPrimaryEmailAsync(user.AccessToken);
+                if (!string.IsNullOrWhiteSpace(resolvedEmail))
+                {
+                    user.Email = resolvedEmail;
+                    user.UpdatedAt = DateTime.UtcNow;
+                    await _userRepository.UpdateAsync(user, cancellationToken);
+                    await _userRepository.SaveChangesAsync(cancellationToken);
+                }
+            }
+            catch
+            {
+                // Fall back gracefully if GitHub API call fails
+            }
+        }
+
         var isRuleSet = await _ruleRepository.HasUserConfiguredRulesAsync(userId);
 
         return new UserProfileDto(

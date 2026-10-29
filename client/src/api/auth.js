@@ -3,23 +3,12 @@ import axiosClient, { BASE_URL } from './axiosClient';
 export const authApi = {
   getToken: () => localStorage.getItem('gitsight_token'),
   getUsername: () => localStorage.getItem('gitsight_username'),
-
+ 
   loginWithGitHub: (prompt = 'select_account') => {
-    // GitHub OAuth credentials
-    const clientId = 'Ov23liSiGC4VzI0a4nAL';
-    const redirectUri = `${BASE_URL}/api/auth/callback`;
-    const state = Math.random().toString(36).substring(2);
-    const scope = 'repo,read:user,user:email';
-
-    // Using prompt=select_account forces GitHub to show the account picker
-    // so the user can choose another existing account or sign into a new one.
-    if (prompt) {
-      window.location.href = `https://github.com/login/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
-        redirectUri
-      )}&scope=${encodeURIComponent(scope)}&state=${state}&prompt=${encodeURIComponent(prompt)}`;
-    } else {
-      window.location.href = `${BASE_URL}/api/auth/login`;
-    }
+    const url = prompt
+      ? `${BASE_URL}/api/auth/login?prompt=${encodeURIComponent(prompt)}`
+      : `${BASE_URL}/api/auth/login`;
+    window.location.href = url;
   },
 
   logout: () => {

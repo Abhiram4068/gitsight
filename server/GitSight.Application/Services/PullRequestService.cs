@@ -219,7 +219,8 @@ public class PullRequestService : IPullRequestService
                 stats.AiSummary = insight.AiSummary;
                 stats.RiskLevel = insight.RiskLevel;
                 stats.AnalysisStatus = insight.Status.ToString().ToLower();
-                stats.IsTracked = true;
+                var session = await _repository.GetAiReviewSessionAsync(owner, repo, prNumber, includeIssues: false);
+                stats.IsTracked = session?.IsTracked ?? false;
             }
         }
         catch (Exception ex)
